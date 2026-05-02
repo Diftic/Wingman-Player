@@ -941,9 +941,15 @@ public partial class OverlayWindow : Window
 
             // Disable disk cache so local Renderer file changes take effect immediately
             // without requiring a manual cache clear between runs.
+            //
+            // --autoplay-policy=no-user-gesture-required bypasses Chromium's autoplay
+            // restriction. Without it, loadVideoById() loads the video but holds back
+            // playback because the call wasn't initiated by a user click — and the user
+            // has to issue a separate playVideo() to start it. That's the wrong shape
+            // for a voice-driven flow where "play X" should actually play X.
             var envOptions = new CoreWebView2EnvironmentOptions
             {
-                AdditionalBrowserArguments = "--disk-cache-size=0"
+                AdditionalBrowserArguments = "--disk-cache-size=0 --autoplay-policy=no-user-gesture-required"
             };
             _env = await CoreWebView2Environment.CreateAsync(
                 userDataFolder: cacheFolder,
