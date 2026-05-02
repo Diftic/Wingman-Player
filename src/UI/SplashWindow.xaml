@@ -30,7 +30,7 @@
         </Rectangle>
 
         <!-- Top accent line (above the image) -->
-        <Rectangle Height="3" VerticalAlignment="Top" Fill="#22d3ee"/>
+        <Rectangle Height="3" VerticalAlignment="Top" Fill="#f87171"/>
 
         <!-- Update banner (collapsed until an update is found) -->
         <Border x:Name="UpdateBanner"
@@ -38,7 +38,7 @@
                 VerticalAlignment="Top"
                 Margin="0,3,0,0"
                 Background="#0a2318"
-                BorderBrush="#22d3ee"
+                BorderBrush="#f87171"
                 BorderThickness="0,0,0,1"
                 Height="36">
             <Grid Margin="16,0">
@@ -50,7 +50,7 @@
                            Grid.Column="0"
                            FontFamily="Segoe UI"
                            FontSize="12"
-                           Foreground="#22d3ee"
+                           Foreground="#f87171"
                            VerticalAlignment="Center"/>
                 <Button x:Name="UpdateButton"
                         Grid.Column="1"
@@ -59,7 +59,7 @@
                         FontSize="11"
                         FontWeight="SemiBold"
                         Padding="10,4"
-                        Background="#22d3ee"
+                        Background="#f87171"
                         Foreground="#09131f"
                         BorderThickness="0"
                         Cursor="Hand"
@@ -75,7 +75,7 @@
             <TextBlock Text="Press "
                        FontFamily="Segoe UI"
                        FontSize="14"
-                       Foreground="#cfeefa"
+                       Foreground="#fee2e2"
                        VerticalAlignment="Center"/>
             <Border Background="#132238"
                     BorderBrush="#2a4a6b"
@@ -88,12 +88,12 @@
                            FontFamily="Consolas"
                            FontSize="13"
                            FontWeight="SemiBold"
-                           Foreground="#22d3ee"/>
+                           Foreground="#f87171"/>
             </Border>
             <TextBlock Text=" to open the player"
                        FontFamily="Segoe UI"
                        FontSize="14"
-                       Foreground="#cfeefa"
+                       Foreground="#fee2e2"
                        VerticalAlignment="Center"/>
         </StackPanel>
 

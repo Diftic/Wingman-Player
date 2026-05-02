@@ -180,7 +180,7 @@ html, body {
   z-index: 6;
   pointer-events: auto;
   background: rgba(0, 10, 25, 0.90);
-  border: 1px solid rgba(34, 211, 238, 0.30);
+  border: 1px solid rgba(248, 113, 113, 0.30);
   border-radius: 12px;
   padding: 20px 24px;
   display: flex;
@@ -202,7 +202,7 @@ html, body {
   z-index: 6;
   pointer-events: auto;
   background: rgba(0, 10, 25, 0.90);
-  border: 1px solid rgba(34, 211, 238, 0.30);
+  border: 1px solid rgba(248, 113, 113, 0.30);
   border-radius: 12px;
   padding: 20px 24px;
   display: flex;
@@ -224,7 +224,7 @@ html, body {
   z-index: 6;
   pointer-events: auto;
   background: rgba(0, 10, 25, 0.90);
-  border: 1px solid rgba(34, 211, 238, 0.30);
+  border: 1px solid rgba(248, 113, 113, 0.30);
   border-radius: 12px;
   padding: 20px 24px;
   display: flex;
@@ -241,14 +241,14 @@ html, body {
 .streamer-info-section {
   font-size: 13px;
   font-weight: 600;
-  color: #22d3ee;
+  color: #f87171;
   margin: 6px 0 -8px 0;
   letter-spacing: 0.02em;
 }
 
 .streamer-info-intro {
   font-size: 12px;
-  color: #cfeefa;
+  color: #fee2e2;
   line-height: 1.2;
   margin: 0;
 }
@@ -266,10 +266,10 @@ html, body {
   font-family: Consolas, "Courier New", monospace;
   font-size: 12px;
   padding: 4px 8px;
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.28);
   border-radius: 6px;
-  color: #cfeefa;
+  color: #fee2e2;
   user-select: all;
 }
 
@@ -288,7 +288,7 @@ html, body {
 .streamer-info-heading {
   font-family: 'Consolas', monospace;
   font-size: 16px;
-  color: #22d3ee;
+  color: #f87171;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -296,7 +296,7 @@ html, body {
 .streamer-info-steps {
   margin: 0;
   padding-left: 22px;
-  color: #cfeefa;
+  color: #fee2e2;
   font-size: 14px;
   line-height: 1.25;
 }
@@ -306,7 +306,7 @@ html, body {
 }
 
 .streamer-info-steps strong {
-  color: #22d3ee;
+  color: #f87171;
   font-weight: 600;
 }
 
@@ -318,13 +318,13 @@ html, body {
 .streamer-info-tip {
   font-size: 13px;
   color: rgba(207, 238, 250, 0.70);
-  border-top: 1px solid rgba(34, 211, 238, 0.20);
+  border-top: 1px solid rgba(248, 113, 113, 0.20);
   padding-top: 12px;
   line-height: 1.15;
 }
 
 .streamer-info-tip strong {
-  color: #22d3ee;
+  color: #f87171;
 }
 
 .settings-row {
@@ -338,7 +338,7 @@ html, body {
   flex-shrink: 0;
   font-family: 'Consolas', monospace;
   font-size: 16px;
-  color: rgba(34, 211, 238, 0.55);
+  color: rgba(248, 113, 113, 0.55);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -349,14 +349,14 @@ html, body {
   text-align: right;
   font-family: 'Consolas', monospace;
   font-size: 16px;
-  color: #22d3ee;
+  color: #f87171;
 }
 
 .settings-slider {
   flex: 1;
   -webkit-appearance: none;
   height: 6px;
-  background: rgba(34, 211, 238, 0.18);
+  background: rgba(248, 113, 113, 0.18);
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -367,18 +367,18 @@ html, body {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #22d3ee;
+  background: #f87171;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.50);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.50);
 }
 
 .settings-action-btn {
   width: 100%;
   height: 40px;
   background: rgba(0, 15, 35, 0.55);
-  border: 1px solid rgba(34, 211, 238, 0.22);
+  border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 6px;
-  color: rgba(34, 211, 238, 0.75);
+  color: rgba(248, 113, 113, 0.75);
   font-family: 'Consolas', monospace;
   font-size: 16px;
   text-transform: uppercase;
@@ -389,9 +389,9 @@ html, body {
 }
 
 .settings-action-btn:hover {
-  background: rgba(34, 211, 238, 0.10);
-  border-color: rgba(34, 211, 238, 0.55);
-  color: #22d3ee;
+  background: rgba(248, 113, 113, 0.10);
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #f87171;
 }
 
 #discord-btn.settings-action-btn {
@@ -415,9 +415,9 @@ html, body {
   flex: 1;
   height: 40px;
   background: rgba(0, 15, 35, 0.55);
-  border: 1px solid rgba(34, 211, 238, 0.22);
+  border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 6px;
-  color: #22d3ee;
+  color: #f87171;
   font-family: 'Consolas', monospace;
   font-size: 16px;
   text-align: center;
@@ -432,19 +432,19 @@ html, body {
 }
 
 .settings-action-btn.locked {
-  background: rgba(34, 211, 238, 0.14);
-  border-color: rgba(34, 211, 238, 0.80);
-  color: #22d3ee;
-  box-shadow: 0 0 6px rgba(34, 211, 238, 0.20);
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.80);
+  color: #f87171;
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.20);
 }
 
 .settings-hotkey-input {
   flex: 1;
   height: 40px;
   background: rgba(0, 15, 35, 0.55);
-  border: 1px solid rgba(34, 211, 238, 0.22);
+  border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 6px;
-  color: #22d3ee;
+  color: #f87171;
   font-family: 'Consolas', monospace;
   font-size: 16px;
   text-align: center;
@@ -455,17 +455,17 @@ html, body {
 }
 
 .settings-hotkey-input:focus {
-  border-color: rgba(34, 211, 238, 0.70);
-  box-shadow: 0 0 6px rgba(34, 211, 238, 0.20);
+  border-color: rgba(248, 113, 113, 0.70);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.20);
 }
 
 .settings-select {
   flex: 1;
   height: 40px;
   background: rgba(0, 15, 35, 0.55);
-  border: 1px solid rgba(34, 211, 238, 0.22);
+  border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 6px;
-  color: #22d3ee;
+  color: #f87171;
   font-family: 'Consolas', monospace;
   font-size: 14px;
   outline: none;
@@ -476,11 +476,11 @@ html, body {
 }
 
 .settings-select:focus {
-  border-color: rgba(34, 211, 238, 0.70);
-  box-shadow: 0 0 6px rgba(34, 211, 238, 0.20);
+  border-color: rgba(248, 113, 113, 0.70);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.20);
 }
 
 .settings-select option {
   background: #02101a;
-  color: #cfeefa;
+  color: #fee2e2;
 }

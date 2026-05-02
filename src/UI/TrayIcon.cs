@@ -90,7 +90,7 @@ public sealed class TrayIcon : IDisposable
         var asm    = Assembly.GetExecutingAssembly();
         var stream = asm.GetManifestResourceStream("wingman_player.Assets.icon.ico");
         if (stream is null)
-            return CreateFallbackIcon(Color.FromArgb(34, 211, 238)); // cyan fallback
+            return CreateFallbackIcon(Color.FromArgb(248, 113, 113)); // crimson fallback
         return new Icon(stream, 16, 16);
     }
 

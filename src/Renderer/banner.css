@@ -5,7 +5,7 @@ html, body {
   height: 100%;
   background: transparent;
   font-family: 'Segoe UI', sans-serif;
-  color: #cfeefa;
+  color: #fee2e2;
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden;
@@ -17,11 +17,11 @@ html, body {
   box-sizing: border-box;
   padding: 10px 16px;
   background: linear-gradient(135deg, rgba(2, 12, 24, 0.86), rgba(0, 25, 45, 0.78));
-  border: 1px solid rgba(34, 211, 238, 0.55);
+  border: 1px solid rgba(248, 113, 113, 0.55);
   border-radius: 10px;
   box-shadow:
-    0 0 14px rgba(34, 211, 238, 0.30),
-    inset 0 0 8px rgba(34, 211, 238, 0.10);
+    0 0 14px rgba(248, 113, 113, 0.30),
+    inset 0 0 8px rgba(248, 113, 113, 0.10);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -38,14 +38,14 @@ html, body {
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
-  text-shadow: 0 0 6px rgba(34, 211, 238, 0.45);
+  text-shadow: 0 0 6px rgba(248, 113, 113, 0.45);
 }
 
 #banner-icon {
-  color: #22d3ee;
+  color: #f87171;
   font-size: 16px;
   flex: 0 0 auto;
-  text-shadow: 0 0 6px rgba(34, 211, 238, 0.7);
+  text-shadow: 0 0 6px rgba(248, 113, 113, 0.7);
 }
 
 #banner-station-name {
@@ -76,10 +76,10 @@ html, body {
 #banner-hotkey {
   display: inline-block;
   padding: 0 6px;
-  background: rgba(34, 211, 238, 0.10);
-  border: 1px solid rgba(34, 211, 238, 0.45);
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.45);
   border-radius: 3px;
-  color: #22d3ee;
+  color: #f87171;
   font-family: 'Consolas', monospace;
   font-size: 10px;
   letter-spacing: 0.05em;
