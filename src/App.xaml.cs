@@ -162,6 +162,13 @@ public partial class App : Application
             .SetMinimumLevel(LogLevel.Debug));
         services.AddSingleton<SettingsManager>();
 
+        // PlayerConfig: system-side knobs loaded once at startup from
+        // %APPDATA%\wingman_player\config.json. Holds the command-server port
+        // (and any future system flags). Distinct from WingmanPlayerSettings,
+        // which is the user-facing surface tied to the renderer's settings panel.
+        services.AddSingleton(p => PlayerConfigLoader.Load(
+            p.GetService<ILoggerFactory>()?.CreateLogger("PlayerConfig")));
+
         // Singletons exposed for direct resolution; also registered as hosted services so
         // the Generic Host starts and stops them automatically.
         services.AddSingleton<GlobalHotkeyListener>();
@@ -173,6 +180,14 @@ public partial class App : Application
         // and start/stop are tied to the host lifecycle.
         services.AddSingleton<LocalAudioStreamServer>();
         services.AddHostedService(p => p.GetRequiredService<LocalAudioStreamServer>());
+
+        // WingmanPlayerHttpServer: localhost command surface for Wingman skills
+        // to drive the player (play/pause/stop/next/previous/seek/state). Bound to
+        // 127.0.0.1 only, no auth — same trust model as the Accountant skill's
+        // local channel. Source-agnostic: /player/play takes {source, ...} so a
+        // future Spotify or local-file skill can drive the same transport.
+        services.AddSingleton<WingmanPlayerHttpServer>();
+        services.AddHostedService(p => p.GetRequiredService<WingmanPlayerHttpServer>());
 
         // AudioBridge: WASAPI process-loopback that captures WebView2 audio and
         // re-emits it from Wingman-Player.exe so OBS Window Capture's
