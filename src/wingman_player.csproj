@@ -13,9 +13,9 @@
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
-        <Version>1.8.1</Version>
-        <FileVersion>1.8.1</FileVersion>
-        <AssemblyVersion>1.8.1.0</AssemblyVersion>
+        <Version>0.5.0</Version>
+        <FileVersion>0.5.0</FileVersion>
+        <AssemblyVersion>0.5.0.0</AssemblyVersion>
         <!-- DPI is configured in app.manifest (PerMonitorV2); suppress WinForms conflict warning -->
         <NoWarn>$(NoWarn);WFO0003</NoWarn>
         <!-- Required for CsWin32 pointer parameters (e.g. GetWindowThreadProcessId) -->
