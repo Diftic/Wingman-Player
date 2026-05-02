@@ -2,48 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PulseNet Player</title>
+  <title>Wingman Media Player</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
 
-    <!-- Layer 1: YouTube player (bottom) -->
+    <!-- Layer 1: YouTube player (bottom). Driven by the Wingman YouTube skill via
+         window.__wingmanLoad(videoId, playlistId) — see player.js. -->
     <div id="video-wrap">
       <div id="player"></div>
       <img id="idle-logo" src="assets/main_logo.png" draggable="false" alt="">
       <!-- Transparent barrier over the bottom 70px — swallows clicks so the
            user can't reach YouTube's "More videos" / "Share" overlay buttons. -->
       <div id="click-blocker" aria-hidden="true"></div>
-      <!-- Top-left barrier (645×60) — swallows clicks on YouTube's channel
-           avatar / title link in the upper-left of the player chrome. -->
+      <!-- Top-left barrier — swallows clicks on YouTube's channel avatar /
+           title link in the upper-left of the player chrome. -->
       <div id="click-blocker-tl" aria-hidden="true"></div>
       <!-- Bottom-right barrier — covers the fullscreen-expand icon YouTube
-           overlays at the bottom-right of embedded videos, just above the
-           wider bottom click-blocker. -->
+           overlays at the bottom-right of embedded videos. -->
       <div id="click-blocker-br" aria-hidden="true"></div>
     </div>
 
-    <!-- Layer 2: Sci-fi frame (no glow, structural) -->
+    <!-- Layer 2: Wingman frame (no glow, structural) -->
     <img id="frame-base" src="assets/frame_base.png" draggable="false" alt="">
 
-    <!-- Layer 4: Station selector buttons -->
-    <div id="stations-left"  class="station-col"></div>
-    <div id="stations-right" class="station-col"></div>
-
-    <!-- Layer 4c: Special utility buttons -->
-    <button id="pulsenet-home-btn" class="station-btn">
-      <img src="assets/pulsenet_icon.png" alt="PulseNet" draggable="false">
+    <!-- Layer 5: Settings button — hexagonal toolkit button at bottom-right of cutout -->
+    <button id="settings-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Screwdriver: handle (top-left) → shaft → tip (bottom-right) -->
+        <g transform="rotate(45 12 12)">
+          <rect x="4"  y="10.4" width="6"  height="3.2" rx="0.5"/>
+          <rect x="10" y="11"   width="7"  height="2"/>
+          <polygon points="17,11 19.5,12 17,13"/>
+        </g>
+        <!-- Hammer: handle (top-right) → head (bottom-left), crossed over the screwdriver -->
+        <g transform="rotate(-45 12 12)">
+          <rect x="9"  y="11"   width="9"  height="2" rx="0.4"/>
+          <rect x="3"  y="9.4"  width="5"  height="5.2" rx="0.6"/>
+        </g>
+      </svg>
     </button>
-    <button id="about-btn" class="station-btn">Info</button>
-
-    <!-- Layer 4b: Station icon hover preview — centered over video rect -->
-    <div id="station-preview" class="hidden">
-      <img id="station-preview-img" src="" alt="" draggable="false">
-    </div>
-
-    <!-- Layer 5: Settings button + panel -->
-    <button id="settings-btn">Settings Menu</button>
 
     <div id="settings-panel" class="hidden">
       <div class="settings-row">
@@ -111,17 +110,16 @@
       </div>
     </div>
 
-    <!-- Layer 5c: Streamer Info sub-panel — OBS setup walkthrough. PulseNet
+    <!-- Layer 5c: Streamer Info sub-panel — OBS setup walkthrough. Wingman Player
          exposes video via the player window (Window Capture) and audio via a
-         dedicated localhost HTTP stream (Media Source). The two sources stay
-         in sync via OBS itself, with one playback control surface (this app). -->
+         dedicated localhost HTTP stream (Media Source). -->
     <div id="streamer-settings-panel" class="hidden">
       <div class="settings-row">
         <button id="streamer-back-btn" class="settings-action-btn">&#x2190; Back</button>
       </div>
       <div class="streamer-info-content">
-        <p class="streamer-info-heading">Stream PulseNet with OBS Studio</p>
-        <p class="streamer-info-intro">PulseNet streams video through the player window and audio through a dedicated localhost feed only OBS can reach. Add two sources in OBS:</p>
+        <p class="streamer-info-heading">Stream with OBS Studio</p>
+        <p class="streamer-info-intro">Wingman Player streams video through the player window and audio through a dedicated localhost feed only OBS can reach. Add two sources in OBS:</p>
 
         <p class="streamer-info-section">1. Video: Window Capture</p>
         <ol class="streamer-info-steps" start="1">
@@ -146,13 +144,12 @@
           <li>Tick <strong>Restart playback when source becomes active</strong>.</li>
         </ol>
 
-        <p class="streamer-info-tip">Press <strong>F9</strong> to hide the player from your monitor. Viewers still see it in your stream.</p>
+        <p class="streamer-info-tip">Press <strong>F8</strong> to hide the player from your monitor. Viewers still see it in your stream.</p>
       </div>
     </div>
 
   </div>
 
-  <script src="stations.js"></script>
   <script src="player.js"></script>
 </body>
 </html>

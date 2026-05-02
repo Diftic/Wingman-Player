@@ -66,7 +66,6 @@ public partial class OverlayWindow : Window
     private volatile int  _hookDragStartX, _hookDragStartY;
     private volatile int  _hookDragWinLeft, _hookDragWinTop;
     private volatile int  _lastHookMouseX, _lastHookMouseY;
-    private string _loadedChannelId = string.Empty;
 
     public event EventHandler? OverlayShown;
     public event EventHandler? OverlayHidden;
@@ -272,29 +271,11 @@ public partial class OverlayWindow : Window
         {
             if (settings.WebViewZoomPct != _zoomPct)
                 ApplyZoom(settings.WebViewZoomPct);
-
-            if (_webViewReady && _loadedChannelId != settings.YoutubeChannelId)
-                RestartNavigation(BuildPlayerUrl(settings.YoutubeChannelId));
         });
     }
 
-    private void RestartNavigation(string url)
-    {
-        _webViewReady = false;
-        _navigationErrorShown = false;
-        _chromeHwnd = HWND.Null;
-        WebView.CoreWebView2.Stop();
-        WebView.CoreWebView2.Navigate(url);
-        _logger.LogInformation("WebView2 restarted — navigating to {Url}", url);
-    }
-
-    private string BuildPlayerUrl(string channelId)
-    {
-        _loadedChannelId = channelId;
-        if (string.IsNullOrEmpty(channelId))
-            return $"https://{Constants.PlayerVirtualHost}/index.html";
-        return $"https://{Constants.PlayerVirtualHost}/index.html?channelId={Uri.EscapeDataString(channelId)}";
-    }
+    private static string BuildPlayerUrl() =>
+        $"https://{Constants.PlayerVirtualHost}/index.html";
 
     // -------------------------------------------------------------------------
     // Focus helpers
@@ -980,7 +961,7 @@ public partial class OverlayWindow : Window
                 CoreWebView2WebResourceContext.All);
             WebView.CoreWebView2.WebResourceRequested += OnRendererResourceRequested;
 
-            var initialUrl = BuildPlayerUrl(_settings.Current.YoutubeChannelId);
+            var initialUrl = BuildPlayerUrl();
             WebView.Source = new Uri(initialUrl);
 
             _webViewReady = true;

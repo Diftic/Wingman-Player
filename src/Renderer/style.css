@@ -1,9 +1,9 @@
 /* ============================================================
-   PulseNet Player — Overlay Renderer
-   Frame canvas: 1252 × 670 px  (full frame art; no edge clipping)
-   Video rect:   left=218 top=100  width=812 height=457  (true 16:9, centered at y=328.5)
-   Left col:     left=25  top=112  width=193 height=433
-   Right col:    left=1030 top=112 width=197 height=433
+   Wingman Media Player — Overlay Renderer
+   Frame canvas: 1252 × 731 px (Wingman frame, stretched non-uniformly so the
+                                3:2 art cutout becomes a 16:9 video rect)
+   Video rect:   left=136 top=94  width=980 height=551  (16:9, inside cutout)
+   Frame asset native: 1537×1023, cutout 167,131 → 1203×771
    ============================================================ */
 
 *, *::before, *::after {
@@ -26,21 +26,18 @@ html, body {
 #app {
   position: relative;
   width: 1252px;
-  height: 670px;
+  height: 731px;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-/* ---- Layer 1: YouTube player ----
-   True 16:9 at 812×457, centered on video y-axis 316.5 to preserve
-   station button alignment. Natural video renders edge-to-edge
-   without pillarbox bars or cropping. */
+/* ---- Layer 1: YouTube player — 16:9 inside the stretched frame cutout ---- */
 #video-wrap {
   position: absolute;
-  left: 218px;
-  top: 100px;
-  width: 812px;
-  height: 457px;
+  left: 136px;
+  top: 94px;
+  width: 980px;
+  height: 551px;
   z-index: 1;
   background: #000;
   overflow: hidden;
@@ -55,7 +52,7 @@ html, body {
 #player iframe {
   /* Absolute + inset takes the iframe out of normal flow, so sibling text
      nodes can't drift it down by ~1px via baseline alignment when we swap
-     between the YT.Player iframe and a raw live_stream iframe. */
+     between the YT.Player iframe and any future raw iframe. */
   position: absolute;
   inset: 0;
   width: 100% !important;
@@ -64,10 +61,8 @@ html, body {
   display: block;
 }
 
-/* ---- Click-blocker — transparent barrier over the bottom 70px of the video.
-   Absorbs clicks so YouTube's "More videos" / "Share" buttons aren't reachable.
-   No listeners attached; pointer-events: auto (default) is enough — clicks hit
-   this element and never reach the iframe below. */
+/* Click-blocker — transparent barrier over the bottom of the video that
+   absorbs clicks so YouTube's "More videos" / "Share" buttons aren't reachable. */
 #click-blocker {
   position: absolute;
   left: 0;
@@ -79,10 +74,8 @@ html, body {
   cursor: default;
 }
 
-/* Bottom-right barrier — sits above the wider bottom blocker and covers
-   the fullscreen-expand icon YouTube overlays at the bottom-right of
-   embedded videos. Adjust width/height/offset once placement is verified
-   via the debug colours below. */
+/* Bottom-right barrier — covers the fullscreen-expand icon YouTube overlays
+   at the bottom-right of embedded videos. */
 #click-blocker-br {
   position: absolute;
   right: 0;
@@ -94,8 +87,7 @@ html, body {
   cursor: default;
 }
 
-
-/* ---- Top-left click-blocker — 645×60 over YouTube's channel/title link ---- */
+/* Top-left click-blocker — covers YouTube's channel/title link */
 #click-blocker-tl {
   position: absolute;
   left: 0;
@@ -107,13 +99,13 @@ html, body {
   cursor: default;
 }
 
-/* ---- Idle logo — shown when no station is active ---- */
+/* ---- Idle/passive background — shown when no video is loaded ---- */
 #idle-logo {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   background: #000;
   pointer-events: none;
   -webkit-user-drag: none;
@@ -124,208 +116,66 @@ html, body {
   display: none;
 }
 
-/* ---- Layer 2: Frame base ----
-   Fills the full 1252×670 canvas so the outer frame art (corners,
-   bolts, bezel edges) is never clipped. Video rect and station
-   columns are offset inward (+25, +12) to sit inside the frame. */
+/* ---- Layer 2: Frame ----
+   Stretched non-uniformly to make the 3:2 cutout in the source art line
+   up with a 16:9 video rect. */
 #frame-base {
   position: absolute;
   left: 0;
   top: 0;
   width: 1252px;
-  height: 670px;
+  height: 731px;
   z-index: 2;
   pointer-events: none;
   user-select: none;
 }
 
-/* ---- Layer 4: Station columns ---- */
-.station-col {
-  position: absolute;
-  /* top set so mid-gap between btn 5 & 6 lands on video vertical centre (328.5px).
-     btn1 start = 328.5 - 236.5 = 92px */
-  top: 92px;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 5px;
-  gap: 17px;
-  /* Columns extend ~37/39px into the video rect on each side; without this
-     the transparent column container swallows clicks in those strips,
-     making the leftmost/rightmost ~30px of the video inert. The station
-     buttons inside set pointer-events: auto so they remain clickable. */
-  pointer-events: none;
-}
-
-#stations-left  { left: 62px;   width: 193px; top: 141px; } /* shifted down: home btn counts as item 1 */
-#stations-right { left: 991px;  width: 197px; }
-
-/* ---- Station button ---- */
-.station-btn {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  pointer-events: auto;
-  transform: scale(1.23);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: rgba(0, 15, 35, 0.45);
-  border: 1px solid rgba(34, 211, 238, 0.12);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-  padding: 3px;
-  outline: none;
-  -webkit-user-drag: none;
-  user-select: none;
-}
-
-.station-btn:hover {
-  background: rgba(34, 211, 238, 0.10);
-  border-color: rgba(34, 211, 238, 0.50);
-}
-
-.station-btn:active {
-  background: rgba(34, 211, 238, 0.18);
-}
-
-.station-btn.active {
-  background: rgba(34, 211, 238, 0.14);
-  border-color: rgba(34, 211, 238, 0.80);
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.28), inset 0 0 6px rgba(34, 211, 238, 0.08);
-}
-
-/* Station icon image — fills button box uniformly, respects aspect ratio.
-   pointer-events: none ensures the img never intercepts clicks/hover —
-   the button element itself is always the hit target. */
-.station-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  pointer-events: none;
-  -webkit-user-drag: none;
-}
-
-/* Placeholder (no icon yet) */
-.station-placeholder {
-  font-size: 18px;
-  line-height: 1;
-  opacity: 0.7;
-}
-
-/* ---- Station icon hover preview — covers the full video rect ---- */
-#station-preview {
-  position: absolute;
-  left: 218px;
-  top: 100px;
-  width: 812px;
-  height: 457px;
-  z-index: 1;
-  pointer-events: none;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-#station-preview.hidden {
-  display: none;
-}
-
-#station-preview.visible {
-  opacity: 1;
-}
-
-#station-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  -webkit-user-drag: none;
-}
-
-.station-num {
-  font-family: 'Consolas', monospace;
-  font-size: 9px;
-  color: rgba(34, 211, 238, 0.55);
-  letter-spacing: 0.05em;
-}
-
-.station-btn.active .station-num {
-  color: #22d3ee;
-}
-
-/* ---- Layer 4c: Special utility buttons ---- */
-
-/* PulseNet home/live button — top of left column, one gap (17px) above first station btn */
-#pulsenet-home-btn {
-  position: absolute;
-  /* Center in left col (left=62, w=193): 62 + (193-32)/2 = 142.5 */
-  left: 143px;
-  /* home counts as item 1; item 1 top = 328.5 - 236.5 = 92px */
-  top: 92px;
-  z-index: 4;
-}
-
-/* About button — bottom of right column, one gap (17px) below last station btn */
-#about-btn {
-  position: absolute;
-  /* Center in right col (left=991, w=197): 991 + (197-32)/2 = 1073.5 */
-  left: 1074px;
-  /* btn9 bottom = 92 + 8×49 + 32 = 516px → 516 + 17gap = 533px */
-  top: 533px;
-  z-index: 4;
-  font-family: 'Consolas', monospace;
-  font-size: 8px;
-  color: rgba(34, 211, 238, 0.55);
-  letter-spacing: 0.05em;
-}
-
-/* ---- Layer 5: Settings button — below the video, 188×38 framed ---- */
+/* ---- Layer 5: Settings button — round, red, on the frame's bottom-right strip ----
+   Hammer + screwdriver SVG glyph, crossbones-style. Sits on the frame artwork
+   below the video cutout so it doesn't obscure the video. */
 #settings-btn {
   position: absolute;
-  left: 532px;
-  top: 593px;
-  width: 188px;
-  height: 38px;
+  left: 1133px;
+  top: 615px;
+  width: 40px;
+  height: 40px;
   z-index: 5;
   pointer-events: auto;
-  background: rgba(0, 15, 35, 0.60);
-  border: 1px solid rgba(34, 211, 238, 0.25);
-  border-radius: 4px;
-  color: rgba(34, 211, 238, 0.60);
-  font-family: 'Consolas', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  background: rgba(40, 0, 8, 0.70);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 50%;
+  color: rgba(248, 113, 113, 0.85);
   cursor: pointer;
   outline: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   user-select: none;
   -webkit-user-drag: none;
 }
 
 #settings-btn:hover {
-  background: rgba(34, 211, 238, 0.10);
-  border-color: rgba(34, 211, 238, 0.55);
-  color: #22d3ee;
+  background: rgba(248, 113, 113, 0.20);
+  border-color: rgba(248, 113, 113, 0.85);
+  color: #fca5a5;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.40);
 }
 
-/* ---- Settings panel — appears above the settings button ---- */
+#settings-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* ---- Settings panel — appears above the settings button, anchored bottom-right ---- */
 #settings-panel {
   position: absolute;
-  left: 373px;
-  bottom: 74px; /* bottom of panel = top of #settings-btn + 2px nudge */
+  right: 75px;
+  bottom: 105px;
   width: 500px;
   z-index: 6;
   pointer-events: auto;
@@ -343,12 +193,11 @@ html, body {
   display: none;
 }
 
-/* Miniplayer Settings sub-panel — same anchor/dimensions as #settings-panel.
-   Replaces the main panel when the user enters the Miniplayer Settings page. */
+/* Miniplayer Settings sub-panel — same anchor/dimensions as #settings-panel. */
 #miniplayer-settings-panel {
   position: absolute;
-  left: 373px;
-  bottom: 74px;
+  right: 75px;
+  bottom: 105px;
   width: 500px;
   z-index: 6;
   pointer-events: auto;
@@ -369,8 +218,8 @@ html, body {
 /* Streamer Options sub-panel — same anchor/dimensions as #settings-panel. */
 #streamer-settings-panel {
   position: absolute;
-  left: 373px;
-  bottom: 74px;
+  right: 75px;
+  bottom: 105px;
   width: 500px;
   z-index: 6;
   pointer-events: auto;
@@ -388,9 +237,7 @@ html, body {
   display: none;
 }
 
-/* Streamer Info section headers separating Video and Audio source setup.
-   Negative bottom margin pulls the OL up against the header, since the
-   parent's flex gap of 12px is too generous for a header-to-list pairing. */
+/* Streamer Info section headers separating Video and Audio source setup. */
 .streamer-info-section {
   font-size: 13px;
   font-weight: 600;
@@ -547,8 +394,6 @@ html, body {
   color: #22d3ee;
 }
 
-/* Discord button inside the settings panel — uses .settings-action-btn
-   for identical dimensions; image fills the button edge-to-edge. */
 #discord-btn.settings-action-btn {
   padding: 0;
   overflow: hidden;

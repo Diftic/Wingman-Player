@@ -11,15 +11,12 @@ internal static class Constants
     public const string PlayerVirtualHost       = "pulsenet.local";
     public const string PlayerRendererFolder    = "Renderer";
 
-    // Frame canvas dimensions — full frame art (outer bezel fully visible, no edge clipping).
+    // Frame canvas dimensions — sized so the cutout in the Wingman frame art lands on a 16:9 video rect.
     public const int FrameDisplayWidth  = 1252;
-    public const int FrameDisplayHeight = 670;
+    public const int FrameDisplayHeight = 731;
 
     // Mini banner — small click-through "now playing" tile in the lower-right.
     public const int BannerWidth  = 400;
     public const int BannerHeight = 100;
     public const int BannerMargin = 16;
-
-    // Default YouTube channel for @Mr_Xul (test/development channel).
-    public const string DefaultChannelId = "UCDemStdcwUHbqhD2ePbKH6A";
 }

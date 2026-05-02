@@ -28,7 +28,7 @@
         }
         break;
       case 'hotkey':
-        if (hotkeyEl) hotkeyEl.textContent = data.value || 'F9';
+        if (hotkeyEl) hotkeyEl.textContent = data.value || 'F8';
         break;
     }
   });

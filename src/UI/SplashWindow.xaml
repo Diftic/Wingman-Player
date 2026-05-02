@@ -11,7 +11,25 @@
         Background="#0d1b2a">
 
     <Grid>
-        <!-- Top accent line -->
+        <!-- Background image — fills the entire splash window -->
+        <Image Source="/Assets/main_logo.png"
+               Stretch="UniformToFill"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               RenderOptions.BitmapScalingMode="HighQuality"/>
+
+        <!-- Bottom gradient — darkens the lower band so the F9 prompt stays readable
+             over any background variation in the artwork. -->
+        <Rectangle VerticalAlignment="Bottom" Height="110" IsHitTestVisible="False">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#000d1b2a" Offset="0.0"/>
+                    <GradientStop Color="#CC0d1b2a" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- Top accent line (above the image) -->
         <Rectangle Height="3" VerticalAlignment="Top" Fill="#22d3ee"/>
 
         <!-- Update banner (collapsed until an update is found) -->
@@ -49,54 +67,43 @@
             </Grid>
         </Border>
 
-        <!-- Main content -->
-        <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Margin="40,12,40,0">
-
-            <!-- Logo -->
-            <Image Source="/Assets/main_logo.png"
-                   Width="225" Height="225"
-                   HorizontalAlignment="Center"
-                   RenderOptions.BitmapScalingMode="HighQuality"/>
-
-            <!-- Divider -->
-            <Rectangle Height="1" Fill="#1e3a5f" Margin="0,8,0,8"/>
-
-            <!-- Hotkey prompt -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock Text="Press "
-                           FontFamily="Segoe UI"
-                           FontSize="14"
-                           Foreground="#94a3b8"
-                           VerticalAlignment="Center"/>
-                <Border Background="#132238"
-                        BorderBrush="#2a4a6b"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="10,4"
-                        VerticalAlignment="Center">
-                    <TextBlock x:Name="HotkeyLabel"
-                               Text="F3"
-                               FontFamily="Consolas"
-                               FontSize="13"
-                               FontWeight="SemiBold"
-                               Foreground="#22d3ee"/>
-                </Border>
-                <TextBlock Text=" to open the player"
-                           FontFamily="Segoe UI"
-                           FontSize="14"
-                           Foreground="#94a3b8"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
-
+        <!-- Hotkey prompt — overlaid near the bottom -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,0,38">
+            <TextBlock Text="Press "
+                       FontFamily="Segoe UI"
+                       FontSize="14"
+                       Foreground="#cfeefa"
+                       VerticalAlignment="Center"/>
+            <Border Background="#132238"
+                    BorderBrush="#2a4a6b"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,4"
+                    VerticalAlignment="Center">
+                <TextBlock x:Name="HotkeyLabel"
+                           Text="F3"
+                           FontFamily="Consolas"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="#22d3ee"/>
+            </Border>
+            <TextBlock Text=" to open the player"
+                       FontFamily="Segoe UI"
+                       FontSize="14"
+                       Foreground="#cfeefa"
+                       VerticalAlignment="Center"/>
         </StackPanel>
 
         <!-- Bottom hint -->
         <TextBlock Text="Right-click the tray icon to exit"
                    FontFamily="Segoe UI"
                    FontSize="10"
-                   Foreground="#334155"
+                   Foreground="#94a3b8"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Bottom"
-                   Margin="0,0,0,16"/>
+                   Margin="0,0,0,14"/>
     </Grid>
 </Window>

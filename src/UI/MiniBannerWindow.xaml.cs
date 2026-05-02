@@ -30,7 +30,7 @@ public partial class MiniBannerWindow : Window
     private HWND   _hwnd;
     private string _pendingStation = "PulseNet Player";
     private string _pendingTitle   = string.Empty;
-    private string _pendingHotkey  = "F9";
+    private string _pendingHotkey  = "F8";
 
     public MiniBannerWindow(SettingsManager settings, ILogger<MiniBannerWindow> logger)
     {
@@ -86,7 +86,7 @@ public partial class MiniBannerWindow : Window
 
     public void SetHotkeyLabel(string label)
     {
-        _pendingHotkey = string.IsNullOrWhiteSpace(label) ? "F9" : label;
+        _pendingHotkey = string.IsNullOrWhiteSpace(label) ? "F8" : label;
         PushIfReady("hotkey", _pendingHotkey);
     }
 

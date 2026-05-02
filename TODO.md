@@ -2,6 +2,28 @@
 
 ---
 
+## Wingman conversion (2026-05-02)
+
+- [x] **Frame artwork swap** — copy `src/Assets/Frame.png` → `Renderer/assets/frame_base.png` and `src/Assets/passive background.png` → `Renderer/assets/main_logo.png` (and `src/Assets/main_logo.png` for SplashWindow + csproj `<Resource>`).
+- [x] **Canvas + video rect** — frame canvas resized to 1252×731, video rect at (136, 94) 980×551, frame stretched non-uniformly so the 3:2 art cutout lands on a 16:9 video. `Constants.FrameDisplayWidth/Height` updated.
+- [x] **Side buttons gone** — removed left/right station columns, `#pulsenet-home-btn`, `#about-btn`, station hover preview, and matching CSS. Deleted `Renderer/stations.js`, `Renderer/assets/stations/`, and the unused `Info.png` / `pulsenet_icon.png` / `radio_background.png` / `Background graphics.png` / `PulseNet Player.png`.
+- [x] **Channel lock-in gone** — removed `Constants.DefaultChannelId`, `PulsenetSettings.YoutubeChannelId`, `OverlayWindow._loadedChannelId` + `RestartNavigation` + the channel-change reload path in `OnSettingsChanged`, plus `?channelId=…` URL plumbing in `player.js`.
+- [x] **Wingman entry point** — `window.__wingmanLoad(videoId, playlistId)` added to `player.js`. Either-or; both null returns to the idle/passive screen. Queues into `pendingVideoId`/`pendingPlaylist` if the YT.Player isn't ready yet.
+- [x] **Settings button restyled + relocated** — round red 40×40 button at `(1133, 615)` on the frame's bottom-right cluster (off the video). Crossed hammer + screwdriver SVG glyph. Hover gives a crimson glow.
+- [x] **Settings panel anchor** — `right: 75px; bottom: 105px`, applied to all three sub-panels (main, miniplayer, streamer info).
+- [x] **Default hotkey F8** (was F9) — `PulsenetSettings.ToggleHotkey`, `MiniBannerWindow._pendingHotkey` + fallback, `banner.html` static label, `banner.js` fallback, and the Streamer Info `Press F8 to hide` tip all swapped. Existing `settings.json` migrated in-place during testing.
+- [x] **Discord button URL** swapped to `discord.com/invite/shipbit-1173573578604687360`.
+- [x] **Splash full-bleed background** — `SplashWindow.xaml` restructured as `Grid` with `<Image Stretch="UniformToFill">` + bottom gradient + floating F-key prompt.
+
+## Wingman conversion — open follow-ups
+
+- [ ] **Wingman skill control mechanism** — `__wingmanLoad` exists, but the C# host has no inbound channel for the future Wingman YouTube skill yet. Decide between: host-side HTTP/named-pipe listener; out-of-process bridge invoking `CoreWebView2.ExecuteScriptAsync`; or a side-car that the skill talks to.
+- [ ] **Full rebrand** — window title (`OverlayWindow.xaml` `Title="PulseNet Player"`), assembly name `PulseNet-Player`, OBS Streamer Info instructions (currently still "Set Window to PulseNet Player" because that matches the actual window title), README, repo, etc.
+- [ ] **New icon.ico** — `Assets/icon.ico` is still the old PulseNet icon; affects EXE shell icon + tray icon. Generate a multi-resolution Wingman .ico (16/32/48/256) when artwork is provided.
+- [ ] **Streamer Info heading copy** — currently still says "Stream with OBS Studio"; keeps Wingman-neutral wording fine. Revisit during full rebrand.
+
+---
+
 ## Done ✓
 
 - [x] Replace `Assets/icon.ico` with Pulsenet branding (multi-res .ico from PulseNetIcon 1024x1024.png)

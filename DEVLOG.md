@@ -4,6 +4,49 @@
 
 ---
 
+## 2026-05-02 — Session 17 — Wingman conversion (prep for the Wingman YouTube skill)
+
+### Goal
+
+Repurpose PulseNet Player as a generic media-player overlay to be driven by a future Wingman YouTube skill. The PulseNet station system, channel lock-in, and the home/about utility buttons go; the YouTube IFrame API surface, native YouTube controls, settings panel, mini banner, and OBS streaming path stay. Window title and assembly name remain `PulseNet Player` until full rebrand is scoped explicitly — only the visible artwork (frame, passive background) and outbound URLs (Discord) flip to ShipBit / Wingman branding.
+
+### Frame artwork
+
+User supplied `src/Assets/Frame.png` (1537×1023, transparent cutout at 167,131 → 1203×771; aspect 3:2) and `src/Assets/passive background.png` (Wingman / Media Player branding). Cutout was measured by scanning rows from the centre outward for fully-transparent pixels.
+
+Decision: stretch the source frame non-uniformly into a **1252×731** canvas so the 3:2 art cutout lands on a **16:9 video rect at (136, 94) 980×551**. Approach trades ~14% non-uniform stretch on the frame artwork for a clean 16:9 video without letterboxing inside the cutout. Constants `FrameDisplayWidth/Height` updated; `#frame-base` keeps its `width/height` matching `#app` so the stretch happens via CSS.
+
+### What got removed
+
+- **Side station buttons** — `#stations-left`, `#stations-right` columns, `#pulsenet-home-btn`, `#about-btn`, the `#station-preview` hover layer, and all matching CSS.
+- **Station system** — `Renderer/stations.js`, `Renderer/assets/stations/` (entire directory), `Renderer/assets/{Info,pulsenet_icon,radio_background,Background graphics,PulseNet Player}.png`. `STATIONS` global, `buildButtons`, `activateStation`, `loadStationIntoPlayer`, station preview JS, the live-stream iframe path (`loadLiveStream`, `liveStreamActive`, `PULSENET_LIVE_CHANNEL`).
+- **Channel lock-in** — `Constants.DefaultChannelId`, `PulsenetSettings.YoutubeChannelId`, `OverlayWindow._loadedChannelId`, `RestartNavigation`, the channel-change reload path in `OnSettingsChanged`, and the `?channelId=…` URL plumbing in `BuildPlayerUrl` + `player.js`. Player URL is now a no-arg `https://pulsenet.local/index.html`.
+
+### What got added
+
+- **`window.__wingmanLoad(videoId, playlistId)`** in `player.js` — the entry point Wingman's YouTube skill will drive via `CoreWebView2.ExecuteScriptAsync`. Either-or: pass a videoId for a single video, a playlistId for a playlist, or both null to return to the idle/passive screen. If the YT.Player isn't ready yet the call queues into `pendingVideoId`/`pendingPlaylist` and fires on `onReady`.
+- **Hex / round red toolkit button** — replaces the wide horizontal Settings button. Started as a hexagonal flat-top clip-path with crossed hammer + screwdriver SVG glyph; user iterated through several positions (1062,595 → 1178,670 → 1163,655 → 1148,640 → 1143,630 → 1138,620 → 1133,615) before landing on **`(1133, 615)`, 40×40, `border-radius: 50%`, red palette** (background `rgba(40,0,8,0.70)`, border `rgba(248,113,113,0.45)`, hover glow `rgba(248,113,113,0.40)`). Moved off the video onto the frame's bottom-right cluster so it never obscures the playback area.
+- **Default hotkey: F8** (was F9) — `PulsenetSettings.ToggleHotkey`, `MiniBannerWindow._pendingHotkey` and its fallback, the banner.html static label, banner.js fallback, and the Streamer Info `Press F8 to hide` tip all swapped. Existing user `settings.json` migrated in-place via PowerShell during testing — System.Text.Json doesn't auto-migrate, so deployed installs will keep their bound key until rebound.
+- **Discord URL** swapped from the old `Vxn7kzzWGJ` invite to `discord.com/invite/shipbit-1173573578604687360` (ShipBit's Discord).
+- **Splash window full-bleed background** — `SplashWindow.xaml` restructured as a single `Grid` with `<Image Stretch="UniformToFill">` covering the whole window, a bottom gradient (`#000d1b2a` → `#CC0d1b2a`) for legibility, and the F-key prompt + "right-click tray" hint floating at the bottom. The earlier 225×225 logo + divider StackPanel layout is gone. Previously the splash had a small inset image with empty padding around it.
+
+### Settings panel anchoring
+
+The three sub-panels (`#settings-panel`, `#miniplayer-settings-panel`, `#streamer-settings-panel`) all share the same anchor. As the hex button moved up-and-left through iterations, the panel anchor moved by the same delta to stay aligned. Final anchor: **`right: 75px; bottom: 105px`** — the user requested an additional 25px lower at the end of the iteration to give the panel breathing room from the cutout, so `bottom` settled below the position that mirrored the button.
+
+### Build / runtime
+
+- `Assets/icon.ico` was deleted in the working tree pre-session as part of the asset purge but is still referenced by `pulsenet.csproj` (`<ApplicationIcon>` + `<EmbeddedResource>`) and `TrayIcon.cs` (loaded via embedded resource). Build broke on `CS7064: Error opening icon file`; restored via `git checkout HEAD -- src/Assets/icon.ico`. Still PulseNet branding — Wingman icon swap is a follow-up.
+- `src/Assets/main_logo.png` was also deleted but is referenced by `SplashWindow.xaml` and the csproj `<Resource>`. Restored as a copy of `passive background.png` so the splash background and the in-app idle layer share the same artwork.
+
+### Open / deferred
+
+- **Wingman skill control mechanism** — `__wingmanLoad` is the JS-side surface, but the C# host doesn't yet expose any way to drive it. When the Wingman YouTube skill exists, decide whether the host pulls commands (HTTP / named-pipe listener) or the skill pushes (out-of-process bridge invoking `CoreWebView2.ExecuteScriptAsync`).
+- **Full rebrand** — window title (`Title="PulseNet Player"` in `OverlayWindow.xaml`), assembly name `PulseNet-Player`, OBS Streamer Info instructions (still "Set Window to PulseNet Player" because that matches reality), README, DEVLOG, TODO, repo name. Out of scope for today.
+- **Icon** — `Assets/icon.ico` is still the old PulseNet icon. Generate a multi-resolution Wingman .ico when artwork is provided.
+
+---
+
 ## 2026-05-01 - v1.8.1 - Streamer Info polish
 
 Two small follow-ups after looking at v1.8.0 in real use:
