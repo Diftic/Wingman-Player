@@ -2,6 +2,173 @@
 
 ---
 
+## 2026-05-02 — Session 21 — Skill scaffold complete (external)
+
+### Goal
+
+Build the Wingman YouTube skill end-to-end as a counterpart to the player's HTTP command surface, so a true fireside voice test is possible. Skill lives in a different codebase (`D:\PycharmProjects\wingman-ai\skills\wingman_youtube\`) — this entry captures the player-relevant aspects only; full skill DEVLOG lives in that folder.
+
+### What's wired
+
+- Skill calls the player's HTTP routes (`/player/load`, `/player/play`, `/player/pause`, `/player/stop`, `/player/next`, `/player/previous`, `/player/seek`, `/player/state`) via `aiohttp`. The player codebase is now the *driven* side; the skill is the *driver*.
+- Skill auto-launches `Wingman-Player.exe` via `subprocess.Popen` if the HTTP port isn't responding, then polls until the port comes up. `player_exe_path` is a configurable property in the skill.
+- The `Constants.MutexId` regenerated during the rebrand correctly prevents the auto-launch from spawning a second player instance — the second `Mutex` open returns `isNewInstance = false` and `Program.cs` exits cleanly.
+- Source-agnostic schema verified: skill always sends `{source: "youtube", ...}` to `/player/load`, leaving room for the future Spotify / local-file skills to use the same transport without player-side changes.
+
+### Validation
+
+- Skill's confidence math tested standalone: strong match (clear song + artist + matching top result) → composite 1.00 → auto-plays; weak match → 0.95 → falls below 0.98 threshold → list mode; artist-only → 0.65 → list mode. Sane behaviour out of the box.
+- Skill's YAML manifest + JSON installer config parse cleanly.
+- All 5 Python modules `py_compile` clean.
+- Player + skill integration only verifiable end-to-end through Wingman; pending fireside test.
+
+### Out of scope this pass
+
+- Renderer-side now-playing push to the skill (skill polls `/player/state` instead). If post-test feedback shows polling latency hurts, we'd add a webhook callback URL the skill registers with the player.
+- Multi-result `/player/load` with index parameter — skill chooses the videoId before calling the player, so the player itself only ever sees one ID. Keeps player surface minimal.
+
+---
+
+## 2026-05-02 — Session 20 — Transport endpoints (Step 2 of skill bridge)
+
+### Goal
+
+Add the playback transport HTTP routes (`/player/play|pause|stop|next|previous|seek`) plus a real `/player/state` round-trip, so the skill can drive everything except volume (deliberately excluded per user's req #4).
+
+### PlayerCommandBridge
+
+New `src/Services/PlayerCommandBridge.cs` (DI singleton, ~80 lines). Late-bound shim between the HTTP accept thread (background) and the WebView2 player (UI thread). Pattern:
+
+- HTTP server is constructed during host startup.
+- `OverlayWindow` is constructed afterwards (needs UI thread). On construction, it calls `commandBridge.AttachOverlay(this)`.
+- HTTP server resolves the bridge from DI and calls `bridge.ExecuteAsync(script)` / `ExecuteWithResultAsync(script)`.
+- If the overlay isn't attached yet (first ~1s of startup before WPF is up), bridge returns `false`/`null`; HTTP server surfaces that as `503 Service Unavailable`.
+
+### OverlayWindow.ExecutePlayerScriptAsync
+
+Public method, thread-aware:
+
+```csharp
+public async Task<string> ExecutePlayerScriptAsync(string script)
+{
+    if (!Dispatcher.CheckAccess())
+        return await Dispatcher.InvokeAsync(() => ExecutePlayerScriptAsync(script)).Task.Unwrap();
+    if (!_webViewReady) return string.Empty;
+    return await WebView.CoreWebView2.ExecuteScriptAsync(script);
+}
+```
+
+Recursive single dispatch hop. Returns the JSON-encoded result from `ExecuteScriptAsync` verbatim — for `/player/state` the server passes that JSON straight through to the HTTP body, avoiding double-serialization.
+
+### Renderer additions (`player.js`)
+
+New named hooks for transport (the previous `__wingmanForwardKey` will continue to be used by the C# global keyboard hook for in-overlay hover keys; HTTP-driven control uses these new hooks):
+
+- `__wingmanPlay()`, `__wingmanPause()`, `__wingmanStop()`, `__wingmanNext()`, `__wingmanPrevious()`
+- `__wingmanSeek(seconds)`
+- `__wingmanGetState()` — returns `{state, videoId, title, currentTime, duration}`. State strings (`'idle'`, `'playing'`, `'paused'`, `'cued'`, etc.) so the skill doesn't need to map YT.PlayerState integers.
+
+`__wingmanLoad` extended with optional opts argument: `__wingmanLoad(videoId, playlistId, {startSeconds, endSeconds, index})`. Pending-load path also remembers opts so a load issued before WebView2 is ready replays correctly.
+
+### `/load` vs `/play` split (caught mid-test)
+
+Initially had `POST /player/play` taking a body and reloading. That conflicted with "play = resume" in the user's req #4. The IFrame API itself distinguishes `loadVideoById` (new content) from `playVideo` (resume), so split the routes:
+
+- `POST /player/load` — body `{source, videoId?, playlistId?, ...}` — start new content (used by skill reqs 1/2/3)
+- `POST /player/play` — no body — resume (used by skill req 4)
+
+Skills pick based on intent.
+
+### Security: JS-injection safety
+
+Every value spliced into the script that goes through `ExecuteScriptAsync` is JSON-encoded via `JsonSerializer.Serialize` so a malicious videoId can't break out of its string literal. Tested: `videoId: "abc\");alert(1);//"` returns 204 (the literal string passes through to YouTube as a videoId, which obviously fails to load — but no script execution).
+
+### Validation
+
+End-to-end with `curl` against the standard Rick Astley video:
+
+| Step | Result |
+|------|--------|
+| `POST /player/load` | 204; state `playing`, real title/duration/currentTime |
+| `POST /player/pause` | 204; state `paused` at currentTime ~4 |
+| `POST /player/play` (no body) | 204; resumes from same currentTime |
+| `POST /player/seek {seconds:60}` | 204; currentTime jumps to 61.9 |
+| `POST /player/stop` | 204; state `cued` |
+| `POST /player/load` bad source | 400 `unsupported_source` |
+| `POST /player/load` no ids | 400 `missing_videoId_or_playlistId` |
+| `POST /player/seek` no `seconds` | 400 `missing_seconds` |
+| Malformed JSON | 400 `invalid_json: ...` |
+| Injection in videoId | 204, JS-escaped |
+
+### Files
+
+- `src/Services/PlayerCommandBridge.cs` (new, +84)
+- `src/Services/WingmanPlayerHttpServer.cs` (extended, +210)
+- `src/Renderer/player.js` (extended, +50)
+- `src/UI/OverlayWindow.xaml.cs` (constructor + ExecutePlayerScriptAsync, +25)
+- `src/App.xaml.cs` (DI + ctor wiring, +10)
+
+Build green, 0/0. Commit `980b180`.
+
+---
+
+## 2026-05-02 — Session 19 — Skill control surface (Step 1 — HTTP skeleton) + v0.5.0
+
+### Goal
+
+Two pieces in one work session: (a) finalize project as a fresh v0.5.0 product line and push to GitHub; (b) start the skill bridge by adding the HTTP server skeleton + `/player/state` stub, so the wire is provable from `curl` before any skill code exists.
+
+### v0.5.0 + repo creation
+
+- `Version` / `FileVersion` / `AssemblyVersion` in `wingman_player.csproj` flipped from `1.8.1` → `0.5.0`. New project, new versioning baseline. The post-rebrand product is conceptually a fresh line — the v1.8.x history reflects the PulseNet era.
+- `PulseNetPlan.md` deleted. Stale planning artifact (proposed a PyQt6 rewrite that was rejected back in session 1). Already covered in DEVLOG.
+- New GitHub repo `Diftic/Wingman-Player` created via `gh repo create`. Public, default branch `master`, description set, homepage points at `diftic.github.io/Wingman-Player/` (Pages not yet enabled).
+- `git remote set-url origin` to repoint to the new repo. Old `Diftic/PulseNet-Player` repo untouched — still has its v1.8.1 release intact.
+- `git push -u origin master` — full history (including PulseNet-era commits) preserved on the new repo. Repointing was a remote swap, not a history rewrite.
+
+Commits: `f266dd3` (v0.5.0 + plan deletion), then push.
+
+### HTTP skeleton (Step 1)
+
+Two new files plus DI wiring:
+
+**`src/Settings/PlayerConfig.cs`** — `PlayerConfig` record (just `CommandServerPort = 17330` for now) loaded once on startup from `%APPDATA%\wingman_player\config.json`. Defaults silently if the file is absent. Deliberately separate from `WingmanPlayerSettings` so the renderer's settings panel can never round-trip system-side knobs through user-facing JSON. As the system surface grows (auth tokens, future flags) it stays out of the user-tweakable settings file.
+
+**`src/Services/WingmanPlayerHttpServer.cs`** — `IHostedService` modeled on `LocalAudioStreamServer`. `TcpListener` bound to `127.0.0.1:port`, single accept thread, minimal HTTP/1.1 parser (request line + headers + Content-Length body), JSON response writer, `(method, path)` switch routing.
+
+For Step 1 only `GET /player/state` is implemented (returns `{"state":"idle"}`); unknown paths return 404. All other routes added in Step 2.
+
+**Why TcpListener, not HttpListener:** matches the existing audio stream server's pattern, no URL ACL elevation needed (HttpListener requires `netsh http add urlacl` on Windows for non-admin processes), no extra dependency. Localhost-only so we don't need TLS. ~150 lines vs Kestrel's overhead. Adequate for skill use.
+
+**Why one connection at a time:** consistent with `LocalAudioStreamServer`, and skills are low-concurrency (one user, one voice channel). If a future scenario needs concurrent requests it's a small refactor to spawn a Task per connection.
+
+### Validation
+
+`curl` round-trip after build:
+- `GET /player/state` → 200 `{"state":"idle"}`
+- Unknown path → 404 `{"error":"not_found"}`
+- `POST /player/play` (not yet implemented) → 404 (correct)
+- Player exits cleanly, port releases.
+
+### Files
+
+- `src/Settings/PlayerConfig.cs` (new, +44)
+- `src/Services/WingmanPlayerHttpServer.cs` (new, +210)
+- `src/App.xaml.cs` (+10 for DI registration of `PlayerConfig` + `WingmanPlayerHttpServer`)
+
+Build green. Commits: `c8c6a36` (HTTP skeleton).
+
+### Decision: layered architecture for the skill bridge
+
+The user's req #5 ("player must be possible to be controlled by other skills in the future, as the player will be a local media player for wingman as a whole") drove a key call: the player exposes a **media-source-agnostic transport** (`/player/load` takes `{source: "youtube", ...}`), and **the YouTube-specific concerns live in the skill**. So:
+
+- Player codebase: HTTP transport only. Knows nothing about YouTube search, API keys, or quotas.
+- YouTube skill (separate codebase): owns the YouTube Data API key, search calls, caching, quota tracking, confidence math.
+
+Future Spotify / local-file skills slot into the same player surface without player-side changes. This is a meaningfully cleaner boundary than the original plan, which had the player owning a `/search` endpoint and the API key.
+
+---
+
 ## 2026-05-02 — Session 18 — Full PulseNet → Wingman Player rebrand
 
 ### Goal

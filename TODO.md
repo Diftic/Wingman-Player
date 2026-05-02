@@ -17,9 +17,42 @@
 
 ## Wingman conversion — open follow-ups
 
-- [ ] **Wingman skill control mechanism** — `__wingmanLoad` exists, but the C# host has no inbound channel for the future Wingman YouTube skill yet. Decide between: host-side HTTP/named-pipe listener; out-of-process bridge invoking `CoreWebView2.ExecuteScriptAsync`; or a side-car that the skill talks to.
+- [x] **Wingman skill control mechanism** — chose localhost HTTP (matching the user's prior Accountant pattern). Implemented in `WingmanPlayerHttpServer` + `PlayerCommandBridge`. Routes: `/player/load`, `/player/play`, `/player/pause`, `/player/stop`, `/player/next`, `/player/previous`, `/player/seek`, `/player/state`. Source-agnostic body schema so future Spotify / local-file skills can drive the same transport.
 - [x] **Full rebrand** — window title `OverlayWindow.xaml` flipped to "Wingman Player", assembly name `Wingman-Player`, OBS Streamer Info "Set Window to" instruction, README rewritten, csproj renamed to `wingman_player.csproj`, namespaces flipped to `wingman_player`, classes renamed (`PulsenetSettings` → `WingmanPlayerSettings`), JS hooks renamed (`__pulsenet*` → `__wingman*`), MSI rebranded (new UpgradeCode, manufacturer, exe target), GitHub URLs pointed at `Diftic/Wingman-Player`. AppData folder migrated to `wingman_player`, virtual host to `wingman.local`, MutexId regenerated.
 - [ ] **New icon.ico** — `Assets/icon.ico` is still the old PulseNet icon; affects EXE shell icon + tray icon. Generate a multi-resolution Wingman .ico (16/32/48/256) when artwork is provided.
+
+---
+
+## Skill bridge (HTTP command surface)
+
+### Done
+
+- [x] **`PlayerConfig`** — `src/Settings/PlayerConfig.cs`. System-side knobs (currently just `CommandServerPort = 17330`) loaded from `%APPDATA%\wingman_player\config.json`. Defaults silently if absent. Separate from `WingmanPlayerSettings` so the renderer can never round-trip system flags.
+- [x] **`WingmanPlayerHttpServer`** — `src/Services/WingmanPlayerHttpServer.cs`. `IHostedService` modeled on `LocalAudioStreamServer`, `TcpListener` on 127.0.0.1, minimal HTTP/1.1 parser, JSON responses, `Connection: close` per request.
+- [x] **`PlayerCommandBridge`** — `src/Services/PlayerCommandBridge.cs`. DI singleton; `OverlayWindow` registers itself in its constructor. HTTP server resolves the bridge and dispatches scripts. Marshals from accept thread to UI thread via `Dispatcher.InvokeAsync`. Returns 503 to skill if overlay isn't attached yet.
+- [x] **JS transport hooks** — `__wingmanPlay/Pause/Stop/Next/Previous/Seek/GetState` added to `player.js`. `__wingmanLoad` extended with `opts` arg (`{startSeconds, endSeconds, index}`).
+- [x] **`/load` vs `/play` split** — caught during testing. Initial design had `POST /player/play` taking a body; conflicted with "play = resume" in req #4. The IFrame API itself distinguishes `loadVideoById` from `playVideo`, so split into `/load` (new content, with body) and `/play` (resume, no body).
+- [x] **Injection safety** — every value spliced into JS that goes through `ExecuteScriptAsync` is `JsonSerializer.Serialize`-encoded. Tested with malicious videoId; literal pass-through to YouTube, no script execution.
+- [x] **End-to-end curl validation** — load / state / pause / play (resume) / seek / stop all work; bad source / missing fields / malformed JSON all return 400 with structured error bodies.
+- [x] **YouTube skill scaffolded** — separate codebase at `D:\PycharmProjects\wingman-ai\skills\wingman_youtube\`. Skill has its own DEVLOG + TODO. Player codebase only knows the HTTP routes; skill owns YouTube specifics.
+
+### Open
+
+- [ ] **Fireside test** — voice-driven test against the live skill+player pair. May surface LLM rubric issues, prompt tuning, or auto-launch race conditions. Pending user action.
+- [ ] **Post-test polish** — to be filled in based on what the test reveals.
+
+### Considered, deferred
+
+- **Push state changes from player → skill (webhook).** Today the skill polls `/player/state`. If polling latency hurts during the fireside test, add an optional `?subscribe=URL` query param the skill includes, and have the player POST state-change events to that URL. Keeps the current poll path as a fallback.
+- **Auth on the HTTP surface.** None today — same trust model as Accountant. Localhost-only mitigates most of it; if Wingman ever runs on a multi-user box this needs a shared-secret token in `PlayerConfig`.
+
+---
+
+## Distribution + maintenance
+
+- [ ] **Build + release pipeline** — workflow file already exists (`.github/workflows/build.yml`) and is set to fire on `v*` tag pushes. Won't trigger until the user cuts the first v0.5.0 tag. Auto-update only starts working once a release is published on the new repo.
+- [ ] **Enable GitHub Pages** for `Diftic/Wingman-Player` so the homepage URL set during repo creation actually resolves. Source: `master`/`docs`. Optional — landing page exists but isn't load-bearing.
+- [ ] **Sign the MSI in CI** — flagged in the 2026-04-30 red-team audit as block-public-release tier. Less urgent now that we're on a fresh v0.5.0 line and the release path itself is dormant until a real tag.
 
 ---
 
