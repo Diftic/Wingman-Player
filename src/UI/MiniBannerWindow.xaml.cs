@@ -1,4 +1,4 @@
-namespace pulsenet.UI;
+namespace wingman_player.UI;
 
 using System.IO;
 using System.Text.Json;
@@ -28,7 +28,7 @@ public partial class MiniBannerWindow : Window
     private bool   _editMode;
     private bool   _suppressLocationSave;
     private HWND   _hwnd;
-    private string _pendingStation = "PulseNet Player";
+    private string _pendingStation = "Wingman Player";
     private string _pendingTitle   = string.Empty;
     private string _pendingHotkey  = "F8";
 
@@ -80,7 +80,7 @@ public partial class MiniBannerWindow : Window
 
     public void SetStation(string? station)
     {
-        _pendingStation = string.IsNullOrWhiteSpace(station) ? "PulseNet Player" : station!;
+        _pendingStation = string.IsNullOrWhiteSpace(station) ? "Wingman Player" : station!;
         PushIfReady("station", _pendingStation);
     }
 

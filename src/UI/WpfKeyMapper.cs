@@ -1,4 +1,4 @@
-namespace pulsenet.UI;
+namespace wingman_player.UI;
 
 using System.Windows.Input;
 using Models.Keyboard;

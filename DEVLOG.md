@@ -1,6 +1,71 @@
-# PulseNet Player — Dev Log
+# Wingman Player — Dev Log
 
-> Entertainment Division of The Exelus Corporation — "The 'Verse always has a soundtrack."
+---
+
+## 2026-05-02 — Session 18 — Full PulseNet → Wingman Player rebrand
+
+### Goal
+
+Complete the rebrand the v1.8.x Wingman conversion deferred. Strip every PulseNet-named identifier from code and surfaces, renaming to `wingman_player` (snake_case namespace + filenames, matching the prior `pulsenet` convention) for code, `WingmanPlayer` for class names, `Wingman Player` for UI display strings, and `Wingman-Player` for the binary / repo / installer artifact form. Treat this as a fresh product (no repo created yet), so MSI gets a new UpgradeCode and AppData folder name flips without a migration.
+
+### Project files
+
+- `src/pulsenet.csproj` → `src/wingman_player.csproj`. `<StartupObject>` and `<AssemblyName>` flipped to `wingman_player.Program` / `Wingman-Player`.
+- `pulsenet.slnx` → `wingman_player.slnx`. `<Project Path>` updated.
+
+### Code identifiers
+
+- `namespace pulsenet[.X]` → `namespace wingman_player[.X]` across every .cs file (App.xaml.cs, Constants.cs, Program.cs, Models/, PInvoke/, Services/, Settings/, UI/, Models/Keyboard/).
+- `src/Models/PulsenetSettings.cs` → `WingmanPlayerSettings.cs`; record `PulsenetSettings` → `WingmanPlayerSettings`. `SettingsManager.Current`, `Save`, `Load`, the `SettingsChanged` event arg, and `OverlayWindow.OnSettingsChanged` all retyped.
+- `App.xaml` `x:Class="pulsenet.App"` → `wingman_player.App`. Three Window XAMLs (`OverlayWindow`, `MiniBannerWindow`, `SplashWindow`) flipped to `wingman_player.UI.*` + `Title=` strings rebranded.
+- `TrayIcon.cs` embedded resource lookup `pulsenet.Assets.icon.ico` → `wingman_player.Assets.icon.ico` (resource ID derives from the new namespace).
+
+### Constants + identity
+
+- `ApplicationName` → `Wingman Player`.
+- `MutexId` regenerated (`wingman_player-64459292-292A-417A-9E12-E6E00A3040B5`) so a v1.8.1 instance and a rebranded build don't collide on the named mutex during testing.
+- `AppDataFolderName` → `wingman_player`. Hard switch — no migration code, since per the user there's no published Wingman-Player repo yet so no users to keep settings for.
+- `PlayerVirtualHost` → `wingman.local` (was `pulsenet.local`). Comment in `OverlayWindow.InitializeWebViewAsync` updated.
+
+### JS hooks
+
+`__pulsenetForwardKey`, `__pulsenetNowPlaying`, `__pulsenetVersion`, `__pulsenetRefreshVersionLabel`, `__pulsenetUpdateCheckDone` all flipped to `__wingman*`. Touched both `player.js` and the C# emitters in `OverlayWindow.xaml.cs` (`BuildSyncScript`, `AddScriptToExecuteOnDocumentCreatedAsync`, the `__wingmanForwardKey` injection, and the `__wingmanUpdateCheckDone` re-enable hook). The previously-shipped `window.__wingmanLoad` already used the new prefix from the v1.8.x conversion, so it stays.
+
+### Renderer + display strings
+
+- `banner.html` title + default station name → "Wingman Banner" / "Wingman Player".
+- `banner.js` header comment + station fallback string updated.
+- `MiniBannerWindow._pendingStation` default + `SetStation` fallback → "Wingman Player".
+- OBS Streamer Info instruction: "Set Window to *PulseNet Player*" → "Set Window to *Wingman Player*" (now matches the actual window title).
+- Update-check MessageBox title and body, "Could not load …" navigation-failure HTML, "WebView2 not installed" balloon body all rebranded.
+
+### Update path
+
+- `UpdateChecker` API URL → `https://api.github.com/repos/Diftic/Wingman-Player/releases/latest`. User-Agent → `Wingman-Player/{ver}`. Asset name lookups: `PulseNet-Player.exe` → `Wingman-Player.exe`, `PulseNet-Setup.msi` → `Wingman-Player-Setup.msi`.
+- `SelfUpdateService` exe-name fallback `Path.Combine(AppContext.BaseDirectory, ...)`, temp dir name (`pulsenet_update` → `wingman_player_update`), and the temp MSI/EXE file names all aligned.
+
+### Workflow + installer
+
+- `.github/workflows/build.yml`: csproj path, `Copy-Item` exe name, MSI output name, and the release upload `files:` list all flipped to the Wingman naming.
+- `installer/installer.wxs`: `Name`, `Manufacturer`, `MajorUpgrade DowngradeErrorMessage`, `Feature.Title`, `INSTALLFOLDER` directory name, `AppMenuFolder` name, `Shortcut.Name`, `Target` exe, and `RegistryValue.Key` (`Software\Wingman Player`) all updated. `UpgradeCode` regenerated to `65E7C967-BC4C-4DDF-9BDE-BD8B9765ED28` so MSI treats Wingman Player as a new product instead of an upgrade of a not-shipped PulseNet build.
+- `installer/license.rtf`: copyright line updated.
+
+### Documentation
+
+- `README.md` rewritten for the actual current product. The previous version still described 19 stations, a station selector UI, station icon files in `Renderer/assets/stations/`, and a `stations.js` config — none of which exist post-Wingman-conversion. New README documents the `__wingmanLoad` entry point, the OBS streaming pipeline, settings / hotkey behaviour, and the file layout actually present in the tree.
+- `docs/index.html` (GitHub Pages landing) replaced. Old version was a 1300-line sales page for the station-based PulseNet product — entirely stale. New version is a focused single-page intro to Wingman Player.
+- `TODO.md` title + open follow-ups updated; "Full rebrand" item moved to checked.
+
+### Out of scope this pass
+
+- `Assets/icon.ico` — still the old PulseNet icon. Tracked in the open-follow-ups; needs new artwork before the .ico can be regenerated (16/32/48/256).
+- Historical DEVLOG entries (sessions 1–17) — left as-is; they're history, not current state. Names of session-specific PulseNet artifacts in those entries (channel IDs, station-icon filenames, etc.) reflect the codebase at the time and shouldn't be retroactively edited.
+- `audits/2026-04-30-red-team.md` — references PulseNet by name in its findings; left alone because the audit is dated documentation, not living spec.
+- `Codex analysis.md` — working-tree note, intentionally untracked.
+
+### Build
+
+`dotnet build src/wingman_player.csproj -a x64` after the rename: green (0 warnings, 0 errors).
 
 ---
 

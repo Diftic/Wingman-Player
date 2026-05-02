@@ -1,4 +1,4 @@
-namespace pulsenet.Models.Keyboard;
+namespace wingman_player.Models.Keyboard;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;

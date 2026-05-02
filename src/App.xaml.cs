@@ -1,4 +1,4 @@
-namespace pulsenet;
+namespace wingman_player;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -175,8 +175,8 @@ public partial class App : Application
         services.AddHostedService(p => p.GetRequiredService<LocalAudioStreamServer>());
 
         // AudioBridge: WASAPI process-loopback that captures WebView2 audio and
-        // re-emits it from PulseNet-Player.exe so OBS Window Capture's
-        // Capture Audio (BETA) sees PulseNet as an audio-producing process.
+        // re-emits it from Wingman-Player.exe so OBS Window Capture's
+        // Capture Audio (BETA) sees Wingman Player as an audio-producing process.
         services.AddHostedService<AudioBridge>();
     }
 }

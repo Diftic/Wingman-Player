@@ -1,4 +1,4 @@
-namespace pulsenet;
+namespace wingman_player;
 
 using System.Runtime.InteropServices;
 using System.Threading;

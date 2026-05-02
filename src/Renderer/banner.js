@@ -1,5 +1,5 @@
 /* ============================================================
-   PulseNet Banner — minimised "now playing" tile
+   Wingman Banner — minimised "now playing" tile
    ============================================================ */
 
 (function () {
@@ -18,7 +18,7 @@
     if (typeof data !== 'object' || !data) return;
     switch (data.type) {
       case 'station':
-        if (stationEl) stationEl.textContent = data.value || 'PulseNet Player';
+        if (stationEl) stationEl.textContent = data.value || 'Wingman Player';
         break;
       case 'title':
         if (titleEl) {

@@ -1,4 +1,4 @@
-namespace pulsenet.PInvoke;
+namespace wingman_player.PInvoke;
 
 using System.Runtime.InteropServices;
 

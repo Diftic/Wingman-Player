@@ -1,4 +1,4 @@
-namespace pulsenet.Services;
+namespace wingman_player.Services;
 
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -11,7 +11,7 @@ public record UpdateInfo(bool HasUpdate, string Version, string DownloadUrl, str
 
 internal static class UpdateChecker
 {
-    private const string ApiUrl = "https://api.github.com/repos/Diftic/PulseNet-Player/releases/latest";
+    private const string ApiUrl = "https://api.github.com/repos/Diftic/Wingman-Player/releases/latest";
 
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
 
@@ -19,7 +19,7 @@ internal static class UpdateChecker
     {
         var v     = Assembly.GetExecutingAssembly().GetName().Version;
         var label = v is null ? "0.0.0" : $"{v.Major}.{v.Minor}.{v.Build}";
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"PulseNet-Player/{label}");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd($"Wingman-Player/{label}");
     }
 
     public static async Task<UpdateInfo> CheckAsync(ILogger? log = null)
@@ -48,9 +48,9 @@ internal static class UpdateChecker
             }
 
             var exe = release.Assets
-                .FirstOrDefault(a => a.Name.Equals("PulseNet-Player.exe", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(a => a.Name.Equals("Wingman-Player.exe", StringComparison.OrdinalIgnoreCase));
             var msi = release.Assets
-                .FirstOrDefault(a => a.Name.Equals("PulseNet-Setup.msi", StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(a => a.Name.Equals("Wingman-Player-Setup.msi", StringComparison.OrdinalIgnoreCase));
 
             if (exe is null)
             {

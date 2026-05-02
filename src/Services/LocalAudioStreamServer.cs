@@ -1,4 +1,4 @@
-namespace pulsenet.Services;
+namespace wingman_player.Services;
 
 using System.Buffers.Binary;
 using System.IO;
@@ -13,8 +13,8 @@ using Microsoft.Extensions.Logging;
 ///
 /// Serves the AudioBridge's captured PCM as an endless WAV over loopback HTTP.
 /// OBS Media Source pulls the URL and gets a dedicated audio channel that mirrors
-/// what the in-app WebView2 player is producing, with control retained by PulseNet
-/// (pause/skip in PulseNet => corresponding silence/change in the OBS feed).
+/// what the in-app WebView2 player is producing, with control retained by Wingman Player
+/// (pause/skip in Wingman Player => corresponding silence/change in the OBS feed).
 ///
 /// Single connection at a time. Format is whatever the bridge sets via
 /// <see cref="SetFormat"/> (always 16-bit PCM stereo; sample rate inherited from

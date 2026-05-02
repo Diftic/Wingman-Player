@@ -1,7 +1,7 @@
-namespace pulsenet.UI;
+namespace wingman_player.UI;
 
 using Microsoft.Extensions.Logging;
-using pulsenet.Services;
+using wingman_player.Services;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;

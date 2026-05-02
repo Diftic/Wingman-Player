@@ -1,4 +1,4 @@
-namespace pulsenet.Models.Keyboard;
+namespace wingman_player.Models.Keyboard;
 
 /// <summary>
 ///     Platform-independent keyboard key identifiers, corresponding to JavaScript key names.

@@ -1,4 +1,4 @@
-# PulseNet Player — TODO
+# Wingman Player — TODO
 
 ---
 
@@ -18,9 +18,8 @@
 ## Wingman conversion — open follow-ups
 
 - [ ] **Wingman skill control mechanism** — `__wingmanLoad` exists, but the C# host has no inbound channel for the future Wingman YouTube skill yet. Decide between: host-side HTTP/named-pipe listener; out-of-process bridge invoking `CoreWebView2.ExecuteScriptAsync`; or a side-car that the skill talks to.
-- [ ] **Full rebrand** — window title (`OverlayWindow.xaml` `Title="PulseNet Player"`), assembly name `PulseNet-Player`, OBS Streamer Info instructions (currently still "Set Window to PulseNet Player" because that matches the actual window title), README, repo, etc.
+- [x] **Full rebrand** — window title `OverlayWindow.xaml` flipped to "Wingman Player", assembly name `Wingman-Player`, OBS Streamer Info "Set Window to" instruction, README rewritten, csproj renamed to `wingman_player.csproj`, namespaces flipped to `wingman_player`, classes renamed (`PulsenetSettings` → `WingmanPlayerSettings`), JS hooks renamed (`__pulsenet*` → `__wingman*`), MSI rebranded (new UpgradeCode, manufacturer, exe target), GitHub URLs pointed at `Diftic/Wingman-Player`. AppData folder migrated to `wingman_player`, virtual host to `wingman.local`, MutexId regenerated.
 - [ ] **New icon.ico** — `Assets/icon.ico` is still the old PulseNet icon; affects EXE shell icon + tray icon. Generate a multi-resolution Wingman .ico (16/32/48/256) when artwork is provided.
-- [ ] **Streamer Info heading copy** — currently still says "Stream with OBS Studio"; keeps Wingman-neutral wording fine. Revisit during full rebrand.
 
 ---
 

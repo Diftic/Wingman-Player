@@ -8,8 +8,8 @@
         <UseWPF>true</UseWPF>
         <UseWindowsForms>true</UseWindowsForms>
         <Platform>x64</Platform>
-        <StartupObject>pulsenet.Program</StartupObject>
-        <AssemblyName>PulseNet-Player</AssemblyName>
+        <StartupObject>wingman_player.Program</StartupObject>
+        <AssemblyName>Wingman-Player</AssemblyName>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets\icon.ico</ApplicationIcon>

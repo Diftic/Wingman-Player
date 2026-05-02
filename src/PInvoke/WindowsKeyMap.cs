@@ -1,4 +1,4 @@
-namespace pulsenet.PInvoke;
+namespace wingman_player.PInvoke;
 
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Models.Keyboard;

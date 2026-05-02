@@ -1,4 +1,4 @@
-namespace pulsenet.UI;
+namespace wingman_player.UI;
 
 using System.IO;
 using System.Runtime.InteropServices;
@@ -265,7 +265,7 @@ public partial class OverlayWindow : Window
     // Settings hot-reload
     // -------------------------------------------------------------------------
 
-    private void OnSettingsChanged(object? sender, PulsenetSettings settings)
+    private void OnSettingsChanged(object? sender, WingmanPlayerSettings settings)
     {
         Dispatcher.Invoke(() =>
         {
@@ -525,8 +525,8 @@ public partial class OverlayWindow : Window
                $"if(bsc)bsc.value={bannerScale};" +
                $"if(bos){{bos.value={bannerOp};if(bov)bov.textContent='{bannerOp}%';}}" +
                $"if(blb){{blb.textContent='{bannerLockText}';blb.classList.toggle('locked',{(s.BannerLocked ? "true" : "false")});}}" +
-               $"window.__pulsenetVersion={versionLiteral};" +
-               $"if(typeof window.__pulsenetRefreshVersionLabel==='function')window.__pulsenetRefreshVersionLabel();" +
+               $"window.__wingmanVersion={versionLiteral};" +
+               $"if(typeof window.__wingmanRefreshVersionLabel==='function')window.__wingmanRefreshVersionLabel();" +
                // Reset to main settings page when overlay re-opens.
                $"if(sp)sp.classList.add('hidden');" +
                $"if(mp)mp.classList.add('hidden');" +
@@ -566,7 +566,7 @@ public partial class OverlayWindow : Window
                     var result = MessageBox.Show(
                         this,
                         $"A new version is available.\n\nCurrent: v{current}\nLatest: v{info.Version}\n\nUpdate and restart now?",
-                        "PulseNet Player: Update available",
+                        "Wingman Player: Update available",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Information);
                     if (result == MessageBoxResult.Yes)
@@ -581,8 +581,8 @@ public partial class OverlayWindow : Window
                 {
                     MessageBox.Show(
                         this,
-                        $"PulseNet Player is up to date (v{current}).",
-                        "PulseNet Player",
+                        $"Wingman Player is up to date (v{current}).",
+                        "Wingman Player",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                 }
@@ -592,7 +592,7 @@ public partial class OverlayWindow : Window
                 if (_webViewReady)
                 {
                     _ = WebView.CoreWebView2.ExecuteScriptAsync(
-                        "if(typeof window.__pulsenetUpdateCheckDone==='function')window.__pulsenetUpdateCheckDone();");
+                        "if(typeof window.__wingmanUpdateCheckDone==='function')window.__wingmanUpdateCheckDone();");
                 }
             }
         });
@@ -807,7 +807,7 @@ public partial class OverlayWindow : Window
                             {
                                 if (_webViewReady)
                                     _ = WebView.CoreWebView2.ExecuteScriptAsync(
-                                        $"window.__pulsenetForwardKey&&window.__pulsenetForwardKey('{name}');");
+                                        $"window.__wingmanForwardKey&&window.__wingmanForwardKey('{name}');");
                             });
                         }
                     }
@@ -938,12 +938,12 @@ public partial class OverlayWindow : Window
             WebView.CoreWebView2.NewWindowRequested  += OnNewWindowRequested;
             WebView.CoreWebView2.WebMessageReceived  += OnWebMessageReceived;
 
-            // Define window.__pulsenetVersion before any page script runs, so the
+            // Define window.__wingmanVersion before any page script runs, so the
             // first render of the version label sees the real number instead of
             // the "0.0.0" placeholder. BuildSyncScript still re-injects on every
             // overlay show so a future in-place update is picked up without restart.
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
-                $"window.__pulsenetVersion={System.Text.Json.JsonSerializer.Serialize(GetAppVersionLabel())};");
+                $"window.__wingmanVersion={System.Text.Json.JsonSerializer.Serialize(GetAppVersionLabel())};");
 
             // Map the virtual hostname to the local Renderer folder so the player
             // page is served over https (required for YouTube IFrame API to work).
@@ -953,7 +953,7 @@ public partial class OverlayWindow : Window
                 rendererFolder,
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            // Intercept all pulsenet.local requests and serve renderer files directly
+            // Intercept all wingman.local requests and serve renderer files directly
             // with Cache-Control: no-store so CSS/JS changes take effect immediately
             // after a rebuild without requiring a manual cache clear.
             WebView.CoreWebView2.AddWebResourceRequestedFilter(
@@ -974,7 +974,7 @@ public partial class OverlayWindow : Window
             _logger.LogError("WebView2 runtime is not installed");
             BalloonTipRequested?.Invoke(
                 "WebView2 not installed",
-                "PulseNet Player requires the Microsoft Edge WebView2 Runtime. Please install it and restart.");
+                "Wingman Player requires the Microsoft Edge WebView2 Runtime. Please install it and restart.");
         }
         catch (Exception ex)
         {
@@ -1060,7 +1060,7 @@ public partial class OverlayWindow : Window
 
         WebView.NavigateToString(
             "<html><body style='background:#1a1a1a;color:#ccc;font-family:sans-serif;padding:24px'>" +
-            "<h2 style='color:#e88'>Could not load PulseNet Player</h2>" +
+            "<h2 style='color:#e88'>Could not load Wingman Player</h2>" +
             "<p>The local player page failed to load.</p>" +
             "<p>Ensure the Renderer folder is present alongside the executable.</p>" +
             "</body></html>");

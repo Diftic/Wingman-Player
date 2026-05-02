@@ -27,7 +27,7 @@ jobs:
       - name: Publish
         shell: bash
         run: |
-          dotnet publish src/pulsenet.csproj \
+          dotnet publish src/wingman_player.csproj \
             -c Release \
             -r win-x64 \
             --self-contained true \
@@ -39,7 +39,7 @@ jobs:
       - name: Prepare portable exe
         shell: pwsh
         run: |
-          Copy-Item "artifacts\PulseNet-Player.exe" "PulseNet-Player.exe"
+          Copy-Item "artifacts\Wingman-Player.exe" "Wingman-Player.exe"
 
       - name: Install WiX Toolset
         run: dotnet tool install --global wix --version "5.*"
@@ -55,7 +55,7 @@ jobs:
           wix extension add WixToolset.UI.wixext/5.0.2
           wix build installer.wxs `
             -ext WixToolset.UI.wixext `
-            -o "..\PulseNet-Setup.msi" `
+            -o "..\Wingman-Player-Setup.msi" `
             -arch x64 `
             -define ProductVersion=${{ steps.version.outputs.VERSION }}
 
@@ -63,8 +63,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            PulseNet-Player.exe
-            PulseNet-Setup.msi
+            Wingman-Player.exe
+            Wingman-Player-Setup.msi
           generate_release_notes: true
           draft: false
         env:

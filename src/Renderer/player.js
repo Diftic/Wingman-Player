@@ -131,7 +131,7 @@
   // C# global keyboard hook intercepts a small allow-list of YouTube keys when
   // the cursor is over the video rect (without stealing focus) and calls this
   // function to drive the IFrame API directly.
-  window.__pulsenetForwardKey = function (action) {
+  window.__wingmanForwardKey = function (action) {
     if (!playerReady || !player) return;
     try {
       switch (action) {
@@ -191,7 +191,7 @@
       var data = player.getVideoData();
       if (data && data.title && data.title !== lastReportedTitle) {
         lastReportedTitle = data.title;
-        window.__pulsenetNowPlaying = data.title;
+        window.__wingmanNowPlaying = data.title;
         try {
           window.chrome.webview.postMessage(JSON.stringify({ type: 'nowPlaying', title: data.title }));
         } catch (_) {}
@@ -258,13 +258,13 @@
     });
   }
 
-  // Version is pushed in by C# (BuildSyncScript sets window.__pulsenetVersion).
+  // Version is pushed in by C# (BuildSyncScript sets window.__wingmanVersion).
   var versionBtn = document.getElementById('version-btn');
   function versionLabel() {
-    var v = window.__pulsenetVersion || '0.0.0';
+    var v = window.__wingmanVersion || '0.0.0';
     return 'v' + v + '  ·  Check for updates';
   }
-  window.__pulsenetRefreshVersionLabel = function () {
+  window.__wingmanRefreshVersionLabel = function () {
     if (versionBtn && !versionBtn.disabled) versionBtn.textContent = versionLabel();
   };
   if (versionBtn) {
@@ -282,7 +282,7 @@
       }
     });
   }
-  window.__pulsenetUpdateCheckDone = function () {
+  window.__wingmanUpdateCheckDone = function () {
     if (!versionBtn) return;
     versionBtn.disabled = false;
     versionBtn.textContent = versionLabel();

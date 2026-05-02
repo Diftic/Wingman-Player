@@ -1,4 +1,4 @@
-namespace pulsenet.Services;
+namespace wingman_player.Services;
 
 using System.Diagnostics;
 using System.IO;
@@ -81,12 +81,12 @@ internal static class SelfUpdateService
         Directory.CreateDirectory(AppDataDir);
 
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName
-            ?? Path.Combine(AppContext.BaseDirectory, "PulseNet-Player.exe");
+            ?? Path.Combine(AppContext.BaseDirectory, "Wingman-Player.exe");
         var currentPid = Process.GetCurrentProcess().Id;
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "pulsenet_update");
+        var tempDir = Path.Combine(Path.GetTempPath(), "wingman_player_update");
         Directory.CreateDirectory(tempDir);
-        var tempMsi = Path.Combine(tempDir, "pulsenet_update.msi");
+        var tempMsi = Path.Combine(tempDir, "wingman_player_update.msi");
 
         log?.LogInformation("Downloading MSI from {Url}", msiUrl);
         using var response = await _http.GetAsync(msiUrl, HttpCompletionOption.ResponseHeadersRead);
@@ -203,13 +203,13 @@ internal static class SelfUpdateService
     private static async Task ApplyPortableAsync(string exeUrl, Action quit, ILogger? log)
     {
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName
-            ?? Path.Combine(AppContext.BaseDirectory, "PulseNet-Player.exe");
+            ?? Path.Combine(AppContext.BaseDirectory, "Wingman-Player.exe");
 
         log?.LogInformation("Self-update: current exe = {Exe}", currentExe);
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "pulsenet_update");
+        var tempDir = Path.Combine(Path.GetTempPath(), "wingman_player_update");
         Directory.CreateDirectory(tempDir);
-        var tempExe = Path.Combine(tempDir, "PulseNet-Player.exe");
+        var tempExe = Path.Combine(tempDir, "Wingman-Player.exe");
 
         log?.LogInformation("Downloading update from {Url}", exeUrl);
         using var response = await _http.GetAsync(exeUrl, HttpCompletionOption.ResponseHeadersRead);

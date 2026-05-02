@@ -1,4 +1,4 @@
-namespace pulsenet.UI;
+namespace wingman_player.UI;
 
 using System.Diagnostics;
 using System.Drawing;
@@ -88,7 +88,7 @@ public sealed class TrayIcon : IDisposable
     private static Icon LoadEmbeddedIcon()
     {
         var asm    = Assembly.GetExecutingAssembly();
-        var stream = asm.GetManifestResourceStream("pulsenet.Assets.icon.ico");
+        var stream = asm.GetManifestResourceStream("wingman_player.Assets.icon.ico");
         if (stream is null)
             return CreateFallbackIcon(Color.FromArgb(34, 211, 238)); // cyan fallback
         return new Icon(stream, 16, 16);

@@ -1,4 +1,4 @@
-namespace pulsenet.Models;
+namespace wingman_player.Models;
 
 using Keyboard;
 
@@ -8,7 +8,7 @@ public enum MinimizeMode
     Tray,
 }
 
-public record PulsenetSettings
+public record WingmanPlayerSettings
 {
     public KeyboardShortcut ToggleHotkey    { get; set; } = new([KeyboardKey.F8]);
     public int WebViewZoomPct               { get; set; } = 100;

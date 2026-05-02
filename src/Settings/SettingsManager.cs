@@ -1,4 +1,4 @@
-namespace pulsenet.Settings;
+namespace wingman_player.Settings;
 
 using System.IO;
 using System.Text.Json;
@@ -21,9 +21,9 @@ public sealed class SettingsManager
 
     private readonly ILogger<SettingsManager> _logger;
 
-    public PulsenetSettings Current { get; private set; }
+    public WingmanPlayerSettings Current { get; private set; }
 
-    public event EventHandler<PulsenetSettings>? SettingsChanged;
+    public event EventHandler<WingmanPlayerSettings>? SettingsChanged;
 
     public SettingsManager(ILogger<SettingsManager> logger)
     {
@@ -31,7 +31,7 @@ public sealed class SettingsManager
         Current = Load();
     }
 
-    public void Save(PulsenetSettings settings)
+    public void Save(WingmanPlayerSettings settings)
     {
         try
         {
@@ -50,24 +50,24 @@ public sealed class SettingsManager
         }
     }
 
-    private PulsenetSettings Load()
+    private WingmanPlayerSettings Load()
     {
         if (!File.Exists(SettingsPath))
         {
             _logger.LogInformation("No settings file found at {Path}; using defaults", SettingsPath);
-            return new PulsenetSettings();
+            return new WingmanPlayerSettings();
         }
 
         try
         {
             var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<PulsenetSettings>(json, JsonOptions)
-                   ?? new PulsenetSettings();
+            return JsonSerializer.Deserialize<WingmanPlayerSettings>(json, JsonOptions)
+                   ?? new WingmanPlayerSettings();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to load settings from {Path}; using defaults", SettingsPath);
-            return new PulsenetSettings();
+            return new WingmanPlayerSettings();
         }
     }
 }

@@ -1,4 +1,4 @@
-namespace pulsenet.Models.Keyboard;
+namespace wingman_player.Models.Keyboard;
 
 public static class KeyboardKeyUtils
 {

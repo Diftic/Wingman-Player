@@ -1,4 +1,4 @@
-namespace pulsenet.Services;
+namespace wingman_player.Services;
 
 using System.Runtime.InteropServices;
 using Windows.Win32;
