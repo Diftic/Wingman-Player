@@ -81,7 +81,8 @@ public partial class OverlayWindow : Window
     public OverlayWindow(
         SettingsManager settings,
         GlobalHotkeyListener hotkeyListener,
-        ILogger<OverlayWindow> logger)
+        ILogger<OverlayWindow> logger,
+        PlayerCommandBridge commandBridge)
     {
         _settings = settings;
         _hotkeyListener = hotkeyListener;
@@ -90,6 +91,25 @@ public partial class OverlayWindow : Window
         InitializeComponent();
 
         _settings.SettingsChanged += OnSettingsChanged;
+        commandBridge.AttachOverlay(this);
+    }
+
+    /// <summary>
+    /// Dispatches a JS expression to the WebView2 from any thread and returns the
+    /// JSON-encoded result (per CoreWebView2.ExecuteScriptAsync). Returns empty
+    /// string if the WebView isn't ready yet — the bridge surfaces that as 503.
+    /// </summary>
+    public async Task<string> ExecutePlayerScriptAsync(string script)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            return await Dispatcher
+                .InvokeAsync(() => ExecutePlayerScriptAsync(script))
+                .Task
+                .Unwrap();
+        }
+        if (!_webViewReady) return string.Empty;
+        return await WebView.CoreWebView2.ExecuteScriptAsync(script);
     }
 
     public void Toggle()

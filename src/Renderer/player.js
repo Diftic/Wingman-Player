@@ -34,10 +34,13 @@
 
   // ---- Wingman skill entry point ----
   // Call from C# via CoreWebView2.ExecuteScriptAsync, e.g.:
-  //   window.__wingmanLoad('dQw4w9WgXcQ');                       // single video
-  //   window.__wingmanLoad(null, 'PLxxxxxxxxxx');                // playlist
-  //   window.__wingmanLoad(null, null);                          // back to idle
-  window.__wingmanLoad = function (videoId, playlistId) {
+  //   window.__wingmanLoad('dQw4w9WgXcQ');                                  // single video
+  //   window.__wingmanLoad('dQw4w9WgXcQ', null, {startSeconds: 30});        // start at 30s
+  //   window.__wingmanLoad(null, 'PLxxxxxxxxxx', {index: 2});               // playlist at index 2
+  //   window.__wingmanLoad(null, null);                                     // back to idle
+  var pendingOpts = null;
+  window.__wingmanLoad = function (videoId, playlistId, opts) {
+    opts = opts || {};
     if (!videoId && !playlistId) {
       showIdleLogo();
       lastReportedTitle = '';
@@ -56,13 +59,55 @@
     if (!playerReady || !player) {
       pendingVideoId  = videoId  || null;
       pendingPlaylist = playlistId || null;
+      pendingOpts     = opts;
       return;
     }
 
     if (videoId) {
-      player.loadVideoById(videoId);
+      var args = { videoId: videoId };
+      if (opts.startSeconds != null) args.startSeconds = opts.startSeconds;
+      if (opts.endSeconds   != null) args.endSeconds   = opts.endSeconds;
+      player.loadVideoById(args);
     } else {
-      player.loadPlaylist({ listType: 'playlist', list: playlistId });
+      var pargs = { listType: 'playlist', list: playlistId };
+      if (opts.index        != null) pargs.index        = opts.index;
+      if (opts.startSeconds != null) pargs.startSeconds = opts.startSeconds;
+      player.loadPlaylist(pargs);
+    }
+  };
+
+  // ---- Wingman transport hooks ----
+  // Called from C# via CoreWebView2.ExecuteScriptAsync. Each is a no-op when
+  // the YT.Player isn't ready (early launch / idle state); HTTP server
+  // surfaces "not ready" via the bridge's null-result path → 503.
+  window.__wingmanPlay     = function () { try { if (playerReady && player) player.playVideo();     } catch (_) {} };
+  window.__wingmanPause    = function () { try { if (playerReady && player) player.pauseVideo();    } catch (_) {} };
+  window.__wingmanStop     = function () { try { if (playerReady && player) player.stopVideo();     } catch (_) {} };
+  window.__wingmanNext     = function () { try { if (playerReady && player) player.nextVideo();     } catch (_) {} };
+  window.__wingmanPrevious = function () { try { if (playerReady && player) player.previousVideo(); } catch (_) {} };
+  window.__wingmanSeek     = function (seconds) {
+    try { if (playerReady && player) player.seekTo(Math.max(0, Number(seconds) || 0), true); } catch (_) {}
+  };
+
+  // Returns a snapshot the HTTP server hands back as JSON. State strings match
+  // YT.PlayerState integers verbatim so the skill side doesn't need to look up
+  // numeric codes.
+  window.__wingmanGetState = function () {
+    var fallback = { state: 'idle', videoId: null, title: null, currentTime: 0, duration: 0 };
+    if (!playerReady || !player) return fallback;
+    try {
+      var stateNum   = player.getPlayerState();
+      var stateNames = { '-1': 'unstarted', '0': 'ended', '1': 'playing', '2': 'paused', '3': 'buffering', '5': 'cued' };
+      var data       = player.getVideoData() || {};
+      return {
+        state:       stateNames[String(stateNum)] || 'unknown',
+        videoId:     data.video_id || null,
+        title:       data.title    || null,
+        currentTime: player.getCurrentTime() || 0,
+        duration:    player.getDuration()    || 0,
+      };
+    } catch (_) {
+      return fallback;
     }
   };
 
@@ -89,12 +134,11 @@
         onReady: function () {
           playerReady = true;
           postKeyForwardCapable();
-          if (pendingVideoId) {
-            player.loadVideoById(pendingVideoId);
-            pendingVideoId = null;
-          } else if (pendingPlaylist) {
-            player.loadPlaylist({ listType: 'playlist', list: pendingPlaylist });
+          if (pendingVideoId || pendingPlaylist) {
+            window.__wingmanLoad(pendingVideoId, pendingPlaylist, pendingOpts || {});
+            pendingVideoId  = null;
             pendingPlaylist = null;
+            pendingOpts     = null;
           }
         },
         onStateChange: onPlayerStateChange,

@@ -31,11 +31,12 @@ public partial class App : Application
         _listener    = _host.Services.GetRequiredService<GlobalHotkeyListener>();
         var listener      = _listener;
         var overlayLogger = _host.Services.GetRequiredService<ILogger<OverlayWindow>>();
+        var commandBridge = _host.Services.GetRequiredService<PlayerCommandBridge>();
 
         // OverlayWindow must be created on the STA (UI) thread.
         // Pre-size to the fixed frame canvas. Position off-screen so the WebView2
         // HwndHost initialises invisibly, then snap to centre on first show.
-        _overlay = new OverlayWindow(settings, listener, overlayLogger);
+        _overlay = new OverlayWindow(settings, listener, overlayLogger, commandBridge);
         var overlay = _overlay;
         overlay.Width  = Constants.FrameDisplayWidth;
         overlay.Height = Constants.FrameDisplayHeight;
@@ -180,6 +181,12 @@ public partial class App : Application
         // and start/stop are tied to the host lifecycle.
         services.AddSingleton<LocalAudioStreamServer>();
         services.AddHostedService(p => p.GetRequiredService<LocalAudioStreamServer>());
+
+        // PlayerCommandBridge: late-bound shim between the HTTP accept thread
+        // and the WebView2 player on the UI thread. OverlayWindow registers
+        // itself with the bridge in its constructor; the HTTP server resolves
+        // the bridge here and waits until the overlay is attached.
+        services.AddSingleton<PlayerCommandBridge>();
 
         // WingmanPlayerHttpServer: localhost command surface for Wingman skills
         // to drive the player (play/pause/stop/next/previous/seek/state). Bound to
