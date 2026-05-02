@@ -74,6 +74,14 @@
       if (opts.startSeconds != null) pargs.startSeconds = opts.startSeconds;
       player.loadPlaylist(pargs);
     }
+    // Belt-and-suspenders against autoplay-policy edge cases: even though
+    // loadVideoById/loadPlaylist *should* auto-start, some Edge/WebView2
+    // versions hold the initial play. Chain a delayed playVideo() that's a
+    // no-op if already playing but un-stalls a cued state. 250ms gives the
+    // load call time to register before we nudge play.
+    setTimeout(function () {
+      try { player.playVideo(); } catch (_) {}
+    }, 250);
   };
 
   // ---- Wingman transport hooks ----
