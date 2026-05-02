@@ -12,8 +12,8 @@ internal static class Constants
     public const string PlayerRendererFolder    = "Renderer";
 
     // Frame canvas dimensions — sized so the cutout in the Wingman frame art lands on a 16:9 video rect.
-    public const int FrameDisplayWidth  = 1252;
-    public const int FrameDisplayHeight = 731;
+    public const int FrameDisplayWidth  = 1247;
+    public const int FrameDisplayHeight = 726;
 
     // Mini banner — small click-through "now playing" tile in the lower-right.
     public const int BannerWidth  = 400;

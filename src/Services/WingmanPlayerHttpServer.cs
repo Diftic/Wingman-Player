@@ -232,11 +232,11 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
         {
             ("GET",  "/player/state")    => await HandleStateAsync(),
             ("POST", "/player/load")     => await HandleLoadAsync(req.Body),
-            ("POST", "/player/play")     => await SimpleCommandAsync("window.__wingmanPlay()"),
-            ("POST", "/player/pause")    => await SimpleCommandAsync("window.__wingmanPause()"),
-            ("POST", "/player/stop")     => await SimpleCommandAsync("window.__wingmanStop()"),
-            ("POST", "/player/next")     => await SimpleCommandAsync("window.__wingmanNext()"),
-            ("POST", "/player/previous") => await SimpleCommandAsync("window.__wingmanPrevious()"),
+            ("POST", "/player/play")     => await SimpleCommandAsync("window.__wingmanPlay()",     showOverlay: true),
+            ("POST", "/player/pause")    => await SimpleCommandAsync("window.__wingmanPause()",    showOverlay: false),
+            ("POST", "/player/stop")     => await SimpleCommandAsync("window.__wingmanStop()",     showOverlay: false),
+            ("POST", "/player/next")     => await SimpleCommandAsync("window.__wingmanNext()",     showOverlay: true),
+            ("POST", "/player/previous") => await SimpleCommandAsync("window.__wingmanPrevious()", showOverlay: true),
             ("POST", "/player/seek")     => await HandleSeekAsync(req.Body),
             _ => NotFound,
         };
@@ -251,6 +251,28 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
         var raw = await _bridge.ExecuteWithResultAsync(
             "(window.__wingmanGetState && window.__wingmanGetState()) || {state:'idle'}");
         if (raw is null) return NotReady;
+
+        // Augment the renderer-side state with update info from the bridge so
+        // the skill (and Wingman) can mention available updates to the user.
+        var update = _bridge.LatestUpdate;
+        if (update?.HasUpdate == true)
+        {
+            try
+            {
+                var dict = JsonSerializer.Deserialize<Dictionary<string, object?>>(raw, JsonOpts);
+                if (dict is not null)
+                {
+                    dict["updateAvailable"] = true;
+                    dict["latestVersion"] = update.Version;
+                    return new Response(200, JsonSerializer.Serialize(dict, JsonOpts));
+                }
+            }
+            catch (JsonException)
+            {
+                // Fall through — return the raw renderer state without augmenting.
+            }
+        }
+
         // ExecuteScriptAsync already returns a JSON-encoded value; pass through.
         return new Response(200, raw);
     }
@@ -293,7 +315,12 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
             $"{optsJson})";
 
         var dispatched = await _bridge.ExecuteAsync(script);
-        return dispatched ? NoContent : NotReady;
+        if (!dispatched) return NotReady;
+        // /load is a playback-starting command — bring the overlay on-screen
+        // so the user can see the video and the WebView2 surface is visible
+        // (browser autoplay policy holds back media on hidden surfaces).
+        await _bridge.EnsureOverlayVisibleAsync();
+        return NoContent;
     }
 
     private static string BuildOptsJson(LoadCommand cmd)
@@ -322,13 +349,18 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
 
         var script = $"window.__wingmanSeek({JsonSerializer.Serialize(cmd.Seconds.Value)})";
         var dispatched = await _bridge.ExecuteAsync(script);
-        return dispatched ? NoContent : NotReady;
+        if (!dispatched) return NotReady;
+        await _bridge.EnsureOverlayVisibleAsync();
+        return NoContent;
     }
 
-    private async Task<Response> SimpleCommandAsync(string script)
+    private async Task<Response> SimpleCommandAsync(string script, bool showOverlay)
     {
         var dispatched = await _bridge.ExecuteAsync(script);
-        return dispatched ? NoContent : NotReady;
+        if (!dispatched) return NotReady;
+        if (showOverlay)
+            await _bridge.EnsureOverlayVisibleAsync();
+        return NoContent;
     }
 
     // -------------------------------------------------------------------------

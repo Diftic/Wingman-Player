@@ -25,8 +25,8 @@ html, body {
 /* ---- Root app container — fixed to frame canvas size ---- */
 #app {
   position: relative;
-  width: 1252px;
-  height: 731px;
+  width: 1247px;
+  height: 726px;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -123,8 +123,8 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 1252px;
-  height: 731px;
+  width: 1247px;
+  height: 726px;
   z-index: 2;
   pointer-events: none;
   user-select: none;

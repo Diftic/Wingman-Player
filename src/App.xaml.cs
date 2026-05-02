@@ -55,16 +55,12 @@ public partial class App : Application
         _banner.Show();
         var banner = _banner;
 
-        // Check for updates while WebView2 loads; splash waits for the result.
+        // Check for updates in the background. Result lands on the bridge so
+        // the skill can surface "update available" through /player/state and
+        // Wingman tells the user (replaces the previous splash-window banner).
         var updateLog  = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("UpdateChecker");
-        var splashLog  = _host.Services.GetRequiredService<ILogger<UI.SplashWindow>>();
         var updateInfo = await Services.UpdateChecker.CheckAsync(updateLog);
-
-        var splash = new UI.SplashWindow(splashLog);
-        splash.SetHotkeyLabel(settings.Current.ToggleHotkey.ToString());
-        if (updateInfo.HasUpdate)
-            splash.ShowUpdateBanner(updateInfo);
-        splash.Show();
+        commandBridge.LatestUpdate = updateInfo;
 
         // Tray icon
         _trayIcon = new TrayIcon();
@@ -84,15 +80,6 @@ public partial class App : Application
                 System.Windows.Forms.ToolTipIcon.Warning);
             Services.SelfUpdateService.ClearLastResult();
         }
-
-
-        // First hotkey press closes the splash; subsequent presses just toggle.
-        void OnFirstHotkey(object? s, EventArgs _)
-        {
-            Dispatcher.InvokeAsync(splash.Close);
-            listener.HotkeyPressed -= OnFirstHotkey;
-        }
-        listener.HotkeyPressed += OnFirstHotkey;
 
         // Hotkey → tri-state cycle. Banner-visible → restore overlay. Overlay-visible →
         // hide overlay and (in Banner mode) raise the banner. Both hidden → show overlay.

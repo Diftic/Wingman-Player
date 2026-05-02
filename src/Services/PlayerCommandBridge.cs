@@ -33,6 +33,13 @@ public sealed class PlayerCommandBridge
     public bool IsReady => _overlay is not null;
 
     /// <summary>
+    /// Latest update-check result, populated on app startup and whenever a
+    /// manual check is run. Surfaced through /player/state so the skill (and
+    /// therefore Wingman / the user) knows when an update is available.
+    /// </summary>
+    public UpdateInfo? LatestUpdate { get; set; }
+
+    /// <summary>
     /// Fire-and-forget script. Returns true if the overlay was available and
     /// the script was dispatched; false if the overlay isn't attached yet.
     /// </summary>
@@ -69,6 +76,28 @@ public sealed class PlayerCommandBridge
         {
             _logger.LogDebug(ex, "Bridge ExecuteWithResultAsync failed");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Bring the overlay on-screen if it isn't already. Used by HTTP-driven
+    /// playback-starting commands (/player/load, /player/play, /next, /previous,
+    /// /seek) so a voice request like "play X" actually shows the player —
+    /// and so the WebView2 surface becomes visible, satisfying browser
+    /// autoplay-policy heuristics that would otherwise hold playback in a
+    /// "loaded but not playing" state on a hidden window.
+    /// </summary>
+    public async Task EnsureOverlayVisibleAsync()
+    {
+        var overlay = _overlay;
+        if (overlay is null) return;
+        try
+        {
+            await overlay.Dispatcher.InvokeAsync(overlay.EnsureVisible);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Bridge EnsureOverlayVisibleAsync failed");
         }
     }
 }
