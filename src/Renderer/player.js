@@ -223,6 +223,16 @@
   };
 
   function onPlayerStateChange(event) {
+    // Forward the YT.PlayerState to the C# host so OverlayWindow can drive
+    // the idle-hide timer (state→ENDED starts it; state→PLAYING cancels it
+    // and re-shows the overlay if it had been parked off-screen).
+    try {
+      window.chrome.webview.postMessage(JSON.stringify({
+        type: 'playerState',
+        state: event.data
+      }));
+    } catch (_) {}
+
     if (event.data === YT.PlayerState.PLAYING) {
       scheduleTrackUpdate();
     }

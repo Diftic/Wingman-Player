@@ -50,9 +50,16 @@
 
 ## Distribution + maintenance
 
-- [ ] **Build + release pipeline** — workflow file already exists (`.github/workflows/build.yml`) and is set to fire on `v*` tag pushes. Won't trigger until the user cuts the first v0.5.0 tag. Auto-update only starts working once a release is published on the new repo.
+- [x] **Build + release pipeline** — first release on `Diftic/Wingman-Player` cut as `v0.5.0` (commit `b789dd6`, 2026-05-04). CI ran in 2m41s; release at https://github.com/Diftic/Wingman-Player/releases/tag/v0.5.0 with both `Wingman-Player.exe` and `Wingman-Player-Setup.msi`. `UpdateChecker` is now anchored against a real release.
+- [ ] **Bump GitHub Actions to Node.js 24** — CI run for `v0.5.0` surfaced a deprecation annotation: `actions/checkout@v4`, `actions/setup-dotnet@v4`, `softprops/action-gh-release@v2` all run on Node.js 20. Hard cutoff September 16, 2026 (forced June 2 2026). Bump each to its Node.js-24-supporting major version before then.
 - [ ] **Enable GitHub Pages** for `Diftic/Wingman-Player` so the homepage URL set during repo creation actually resolves. Source: `master`/`docs`. Optional — landing page exists but isn't load-bearing.
-- [ ] **Sign the MSI in CI** — flagged in the 2026-04-30 red-team audit as block-public-release tier. Less urgent now that we're on a fresh v0.5.0 line and the release path itself is dormant until a real tag.
+- [ ] **Sign the MSI in CI** — flagged in the 2026-04-30 red-team audit as block-public-release tier. More relevant now that v0.5.0 is live and people may start downloading the unsigned MSI.
+
+## Distribution model (finalised 2026-05-04)
+
+- **Player** distributes via GitHub releases as `Wingman-Player-Setup.msi`. Per-user install to `%LocalAppData%\Programs\Wingman Player\`. Has its own update channel (in-app "Check for updates" → MSI swap via `SelfUpdateService.ApplyMsiAsync`). Player codec/code updates ship independently of skill releases.
+- **YouTube skill** (separate repo `wingman-ai\skills\youtube_video_player\`) distributes via Wingman Discord forum as `youtube_video_player_v0.1.0.zip` (62 KB) containing `install.bat`. The .bat copies skill files to `%AppData%\Roaming\ShipBit\WingmanAI\custom_skills\youtube_video_player\`. Skill probes the player's canonical install location at runtime; on miss, surfaces a clickable GitHub link to the user via Wingman.
+- **No silent player install from the skill side.** User clicks the link, runs the MSI, comes back. Keeps both pieces independently updateable.
 
 ---
 
@@ -132,6 +139,14 @@
 - [x] **Run a red-team review on the codebase** — Six parallel attack subagents (Opus) per surface: web→native bridge, auto-update path, native interop, settings/filesystem, installer/CI, process lifecycle. Full findings at `audits/2026-04-30-red-team.md`. Filtered for the OSS-desktop threat model: same-user local attacks accepted as out of scope; remote / supply-chain / network-surface findings are the actionable set. Cleared list confirmed: no telemetry, no keystroke leaks, JSON deserializer safe, virtual host path traversal defended.
 - [ ] **Block-public-release tier (supply chain + remote)** — sign MSI in CI (Authenticode, gated behind a GitHub `environment:` with required reviewers) + verify signature on client before `msiexec`, closes CRITICAL-1; pin every GitHub Action (`actions/checkout`, `actions/setup-dotnet`, `softprops/action-gh-release`) by full commit SHA, closes HIGH-3; pin `wix --version 5.0.2` exactly, closes HIGH-4; replace `<Files Include="stage\**" />` in `installer/installer.wxs:42` with explicit `<File>` list + CI allowlist check, closes HIGH-5. Block public distribution until done.
 - [ ] **Defense-in-depth tier** — `e.Source` validation at the top of both `WebMessageReceived` handlers (`OverlayWindow.xaml.cs:378`, `MiniBannerWindow.xaml.cs:233`), closes MEDIUM-1; host allow-list in `OpenInDefaultBrowser` (`OverlayWindow.xaml.cs:1201`), closes MEDIUM-3; add `dependabot.yml` for `nuget` + `github-actions` and a root `NuGet.config` with `packageSourceMapping` pinned to `nuget.org`, closes MEDIUM-10; add `<Deterministic>true</Deterministic>` + `actions/attest-build-provenance` so releases are independently verifiable, closes L-13.
+
+## Auto-hide / minimize (Session 23, 2026-05-14)
+
+- [x] **Idle auto-hide on stop / natural-end**: 15s `DispatcherTimer` in `OverlayWindow.xaml.cs` reuses `HideOverlay(restoreFocus: false)`. Started by `POST /player/stop` and by renderer state -> ENDED. Cancelled by play / load / next / previous / seek and by renderer state -> PLAYING.
+- [x] **`/player/hide` and `/player/show` endpoints**: immediate visibility toggle from voice tools ("minimize player" / "show player").
+- [x] **Renderer state forwarded to C#**: `player.js` posts `{type:'playerState', state}` so the overlay can drive timer state without polling.
+- [ ] **Fireside verify**: after v0.5.1 CI build + install, confirm 15s timeout fires after stop, that resume re-shows the window, and that natural end-of-video triggers the timer.
+- [ ] **Configurable timeout** (low priority): the 15s constant `IdleHideSeconds` is hard-coded in `OverlayWindow.xaml.cs`. Wire to `WingmanPlayerSettings.IdleHideSeconds` and the settings panel if users want it tunable.
 
 ## Pending verification
 

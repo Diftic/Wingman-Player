@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Web.WebView2.Core;
 using Models;
@@ -135,6 +136,84 @@ public partial class OverlayWindow : Window
     {
         if (_isVisible)
             HideOverlay(restoreFocus: false);
+    }
+
+    // Idle hide countdown — when playback stops (manual /stop or natural end),
+    // we wait this long before parking the overlay off-screen. Cancelled the
+    // moment playback resumes (YT.Player state → PLAYING) or any
+    // playback-starting HTTP route fires. The window object stays alive so
+    // the next request is a warm relaunch (Session 13 architecture).
+    private const int IdleHideSeconds = 15;
+    private DispatcherTimer? _idleHideTimer;
+
+    /// <summary>
+    /// Start (or restart) the 15-second idle countdown. When it fires the
+    /// overlay is moved off-screen via the existing EnsureHidden() path.
+    /// Safe to call from any thread — marshalled to the UI dispatcher.
+    /// </summary>
+    public void StartIdleHideCountdown()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_idleHideTimer is null)
+            {
+                _idleHideTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(IdleHideSeconds),
+                };
+                _idleHideTimer.Tick += OnIdleHideTimerTick;
+            }
+            _idleHideTimer.Stop();
+            _idleHideTimer.Start();
+            _logger.LogDebug("Idle-hide countdown started ({s}s)", IdleHideSeconds);
+        });
+    }
+
+    /// <summary>
+    /// Cancel a running idle countdown. Called when playback resumes or any
+    /// playback-starting command arrives. No-op if no countdown is running.
+    /// </summary>
+    public void CancelIdleHideCountdown()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_idleHideTimer is not null && _idleHideTimer.IsEnabled)
+            {
+                _idleHideTimer.Stop();
+                _logger.LogDebug("Idle-hide countdown cancelled");
+            }
+        });
+    }
+
+    private void OnIdleHideTimerTick(object? sender, EventArgs e)
+    {
+        _idleHideTimer?.Stop();
+        if (_isVisible)
+        {
+            _logger.LogInformation("Idle timeout reached — hiding overlay");
+            HideOverlay(restoreFocus: false);
+        }
+    }
+
+    /// <summary>
+    /// React to a YT.PlayerState change reported from the renderer.
+    ///   1 = PLAYING    → cancel idle countdown + bring overlay back if hidden
+    ///   0 = ENDED      → start idle countdown (natural end of video)
+    ///  -1 unstarted / 2 paused / 3 buffering / 5 cued → no-op (pause keeps the
+    ///       window visible; transient buffer/cue states must not hide).
+    /// </summary>
+    private void HandlePlayerState(int state)
+    {
+        switch (state)
+        {
+            case 1: // PLAYING
+                CancelIdleHideCountdown();
+                Dispatcher.Invoke(EnsureVisible);
+                break;
+            case 0: // ENDED
+                StartIdleHideCountdown();
+                break;
+        }
     }
 
     /// <summary>
@@ -436,6 +515,14 @@ public partial class OverlayWindow : Window
                 case "nowPlaying":
                     var title = root.GetProperty("title").GetString() ?? string.Empty;
                     NowPlayingChanged?.Invoke(title);
+                    break;
+
+                case "playerState":
+                    if (root.TryGetProperty("state", out var stateProp)
+                        && stateProp.TryGetInt32(out var stateVal))
+                    {
+                        HandlePlayerState(stateVal);
+                    }
                     break;
 
                 case "currentStation":

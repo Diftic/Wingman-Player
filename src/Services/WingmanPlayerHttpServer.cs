@@ -226,18 +226,31 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
     private static Response BadRequest(string reason) =>
         new(400, $"{{\"error\":\"bad_request\",\"reason\":{JsonSerializer.Serialize(reason)}}}");
 
+    /// <summary>
+    /// Side-effect to run after the player script has dispatched. Lets the
+    /// route table express visibility / idle-timer intent declaratively.
+    /// </summary>
+    private enum PostScriptAction
+    {
+        None,            // leave visibility + timer alone (e.g. /pause)
+        Show,            // bring overlay on-screen, cancel any idle timer
+        StartIdleTimer,  // begin the 15s auto-hide countdown (e.g. /stop)
+    }
+
     private async Task<Response> RouteAsync(Request req)
     {
         return (req.Method, req.Path) switch
         {
             ("GET",  "/player/state")    => await HandleStateAsync(),
             ("POST", "/player/load")     => await HandleLoadAsync(req.Body),
-            ("POST", "/player/play")     => await SimpleCommandAsync("window.__wingmanPlay()",     showOverlay: true),
-            ("POST", "/player/pause")    => await SimpleCommandAsync("window.__wingmanPause()",    showOverlay: false),
-            ("POST", "/player/stop")     => await SimpleCommandAsync("window.__wingmanStop()",     showOverlay: false),
-            ("POST", "/player/next")     => await SimpleCommandAsync("window.__wingmanNext()",     showOverlay: true),
-            ("POST", "/player/previous") => await SimpleCommandAsync("window.__wingmanPrevious()", showOverlay: true),
+            ("POST", "/player/play")     => await SimpleCommandAsync("window.__wingmanPlay()",     PostScriptAction.Show),
+            ("POST", "/player/pause")    => await SimpleCommandAsync("window.__wingmanPause()",    PostScriptAction.None),
+            ("POST", "/player/stop")     => await SimpleCommandAsync("window.__wingmanStop()",     PostScriptAction.StartIdleTimer),
+            ("POST", "/player/next")     => await SimpleCommandAsync("window.__wingmanNext()",     PostScriptAction.Show),
+            ("POST", "/player/previous") => await SimpleCommandAsync("window.__wingmanPrevious()", PostScriptAction.Show),
             ("POST", "/player/seek")     => await HandleSeekAsync(req.Body),
+            ("POST", "/player/hide")     => await HandleHideAsync(),
+            ("POST", "/player/show")     => await HandleShowAsync(),
             _ => NotFound,
         };
     }
@@ -319,6 +332,8 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
         // /load is a playback-starting command — bring the overlay on-screen
         // so the user can see the video and the WebView2 surface is visible
         // (browser autoplay policy holds back media on hidden surfaces).
+        // Also cancel any in-flight idle-hide countdown from a recent /stop.
+        _bridge.CancelIdleHideCountdown();
         await _bridge.EnsureOverlayVisibleAsync();
         return NoContent;
     }
@@ -350,16 +365,57 @@ internal sealed class WingmanPlayerHttpServer : IHostedService, IDisposable
         var script = $"window.__wingmanSeek({JsonSerializer.Serialize(cmd.Seconds.Value)})";
         var dispatched = await _bridge.ExecuteAsync(script);
         if (!dispatched) return NotReady;
+        _bridge.CancelIdleHideCountdown();
         await _bridge.EnsureOverlayVisibleAsync();
         return NoContent;
     }
 
-    private async Task<Response> SimpleCommandAsync(string script, bool showOverlay)
+    private async Task<Response> SimpleCommandAsync(string script, PostScriptAction action)
     {
         var dispatched = await _bridge.ExecuteAsync(script);
         if (!dispatched) return NotReady;
-        if (showOverlay)
-            await _bridge.EnsureOverlayVisibleAsync();
+
+        switch (action)
+        {
+            case PostScriptAction.Show:
+                // Playback-starting command — overlay on-screen, kill any
+                // idle-hide countdown that might be mid-flight from a recent
+                // /stop or natural-end event.
+                _bridge.CancelIdleHideCountdown();
+                await _bridge.EnsureOverlayVisibleAsync();
+                break;
+            case PostScriptAction.StartIdleTimer:
+                // Playback-stopping command — start the 15s countdown. The
+                // renderer's state→PLAYING message cancels it if the user
+                // resumes within the window.
+                _bridge.StartIdleHideCountdown();
+                break;
+        }
+        return NoContent;
+    }
+
+    /// <summary>
+    /// Explicit "minimize player" from the skill. Hides immediately, no
+    /// timer. The user explicitly asked for this so we don't second-guess.
+    /// </summary>
+    private async Task<Response> HandleHideAsync()
+    {
+        if (!_bridge.IsReady) return NotReady;
+        // Cancel any pending idle timer too — hide-now supersedes hide-soon.
+        _bridge.CancelIdleHideCountdown();
+        await _bridge.EnsureOverlayHiddenAsync();
+        return NoContent;
+    }
+
+    /// <summary>
+    /// Explicit "show player" from the skill. Brings overlay on-screen and
+    /// kills any idle countdown so the user has a usable window.
+    /// </summary>
+    private async Task<Response> HandleShowAsync()
+    {
+        if (!_bridge.IsReady) return NotReady;
+        _bridge.CancelIdleHideCountdown();
+        await _bridge.EnsureOverlayVisibleAsync();
         return NoContent;
     }
 

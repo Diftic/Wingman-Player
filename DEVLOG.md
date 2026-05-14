@@ -2,6 +2,114 @@
 
 ---
 
+## 2026-05-14 - Session 23 - Idle-hide timer + /player/hide /show endpoints + state-driven visibility
+
+### What shipped
+
+Player now auto-parks itself off-screen when playback genuinely stops, and resume brings it back. No skill-side polling, no user button press required. Triggered by user feedback that the player just sat there visible after the skill issued a /stop.
+
+### The visibility rules
+
+| Event | Visibility | Idle timer |
+|-------|------------|------------|
+| `/player/play`, `/load`, `/next`, `/previous`, `/seek` | Show | Cancel |
+| `/player/pause` | No change | No change |
+| `/player/stop` | Stays visible for 15s, then hides | Start (or restart) |
+| `/player/hide` (new, voice "minimize player") | Hide immediately | Cancel |
+| `/player/show` (new, voice "show player") | Show immediately | Cancel |
+| Renderer state -> PLAYING | Show | Cancel |
+| Renderer state -> ENDED (natural end of video) | Stays visible for 15s, then hides | Start |
+| Renderer state -> PAUSED / BUFFERING / CUED / UNSTARTED | No change | No change |
+
+Pause deliberately does NOT trigger the timer. Paused is intentional, the user is probably about to come back. Only stop and natural-end are "done playing, fair to clean up". 15s gives the user a grace window to resume without losing the on-screen frame.
+
+### Implementation
+
+**`src/UI/OverlayWindow.xaml.cs`** (+87 lines)
+- `DispatcherTimer`-driven `StartIdleHideCountdown()` / `CancelIdleHideCountdown()` with a 15s `IdleHideSeconds` constant. Reuses the existing `HideOverlay(restoreFocus: false)` path for the actual hide, same code that parks the window off-screen at launch (Session 13 warm-launch architecture).
+- `HandlePlayerState(int)`: single switch on the YT.PlayerState int. State 1 (PLAYING) cancels timer + re-shows; state 0 (ENDED) starts timer. Other states no-op (pause, buffer, cue, unstarted).
+- New `playerState` case in `OnWebMessageReceived` parses the renderer's WebMessage and forwards to `HandlePlayerState`.
+
+**`src/Services/PlayerCommandBridge.cs`** (+37 lines)
+- `EnsureOverlayHiddenAsync()`: mirror of `EnsureOverlayVisibleAsync`. Dispatches `OverlayWindow.EnsureHidden` on the UI thread.
+- `StartIdleHideCountdown()` / `CancelIdleHideCountdown()`: thin wrappers so the HTTP server doesn't reach into the overlay directly.
+
+**`src/Services/WingmanPlayerHttpServer.cs`** (+72 lines)
+- New `PostScriptAction` enum {None, Show, StartIdleTimer} replaces the `bool showOverlay` parameter on `SimpleCommandAsync`. Routes now read declaratively.
+- New `POST /player/hide` (immediate hide) and `POST /player/show` (immediate show with timer cancel) routes.
+- `/play /next /previous` now cancel any in-flight idle timer in addition to showing the overlay, so a /play 14s after /stop doesn't have the player hide one second later.
+- `/load /seek` updated to cancel timer too.
+
+**`src/Renderer/player.js`** (+10 lines)
+- `onPlayerStateChange` now posts `{type:'playerState', state:event.data}` via `chrome.webview.postMessage`. Existing PLAYING/ENDED side effects (`scheduleTrackUpdate` / `showIdleLogo`) unchanged.
+
+### Skill side (companion changes in wingman-ai, captured here for symmetry)
+
+New `hide_player` and `show_player` voice tools added to `skills/youtube_video_player/main.py` with `PlayerClient.hide()` / `.show()` HTTP wrappers. Prompt rubric updated so the LLM picks them on "minimize player" / "show player" / "tuck it away" / "bring it back" phrasings. Full detail in the skill DEVLOG.
+
+### Validation
+
+- `dotnet build` Release on `src/wingman_player.csproj`: 0 warnings, 0 errors. 13.8s.
+- Skill `py_compile` clean on both dev source and `release_version/` copies.
+- End-to-end fireside test pending the CI build of v0.5.1.
+
+### Open follow-up
+
+- Configurable timeout: the 15s constant is hard-coded as `IdleHideSeconds` in `OverlayWindow.xaml.cs`. If users want it tunable, expose via `WingmanPlayerSettings` and the settings panel. Captured in TODO.
+
+---
+
+## 2026-05-04 — Session 22 — v0.5.0 released + update module anchored + distribution model finalised
+
+### What shipped
+
+First public release on the new repo. CI green in 2m41s on `windows-latest`, both artifacts uploaded:
+
+- `Wingman-Player.exe` — portable self-contained single-file (no install required)
+- `Wingman-Player-Setup.msi` — per-user MSI installing to `%LocalAppData%\Programs\Wingman Player\`
+
+Release URL: https://github.com/Diftic/Wingman-Player/releases/tag/v0.5.0
+
+Tag pushed at commit `b789dd6` (master pushed `a8fe56c..b789dd6`, then `git tag -a v0.5.0` then `git push origin v0.5.0` — the workflow trigger).
+
+### Update module is now anchored
+
+`UpdateChecker.CheckAsync()` queries `https://api.github.com/repos/Diftic/Wingman-Player/releases/latest`, which now returns a real release. The asset-name lookups at `UpdateChecker.cs:50-53` match what CI uploads exactly (`Wingman-Player.exe`, `Wingman-Player-Setup.msi`). The previously-dormant auto-update path is live for any future v0.5.x+ release.
+
+`SelfUpdateService.IsMsiInstall()` recognises `%LocalAppData%\Programs` so the per-user MSI install path takes the msiexec branch on update; portable downloads take the exe-swap branch. No code changes needed for either to work — both were already wired correctly from session 18.
+
+### Distribution model — clarified mid-session and finalised
+
+User's clarification mid-session: **player ships independently via GitHub releases as an installer; skill ships separately via Wingman Discord forum as a `.zip` with a `.bat` installer**. When the skill detects player isn't installed, it surfaces a clickable link to the GitHub installer — no silent msiexec orchestration on the skill side, the user installs the player themselves.
+
+Reasons:
+- Player gets its own update lane independent of skill releases (codec/code updates without re-distributing the skill .zip).
+- Skill stays simple (no msiexec orchestration code).
+- Clearer ownership separation — player is an app, skill is a skill, neither installs the other.
+
+This *reversed* yesterday's planned changes (which would have redirected the MSI target to `%AppData%\Roaming\ShipBit\WingmanAI\custom_skills\<leaf>\` and had the skill silently install the player). Yesterday's planned edits to `installer/installer.wxs` and `SelfUpdateService.IsMsiInstall()` are no longer needed; the leaf-folder question is moot.
+
+### Skill release artifact rebuilt (work in `wingman-ai`, not this repo)
+
+Captured here only because it interlocks with the player release model. Full detail in the skill repo's DEVLOG. In `D:\PycharmProjects\wingman-ai\skills\youtube_video_player\release_version\`:
+
+- Deleted `player/` (the bundled ~174MB Wingman-Player.exe). Player no longer ships inside the skill.
+- `main.py` — when `player_exe_path` is empty, probes `%LocalAppData%\Programs\Wingman Player\Wingman-Player.exe`. On miss, error responses include the GitHub installer URL so Wingman pastes a clickable link.
+- `install.bat`, `RELEASE_NOTES`, `TESTER_README`, `default_config.yaml`, `skill_installer_config.json`, `__init__.py` — all messaging reflects the two-step install.
+- Produced `youtube_video_player_v0.1.0.zip` (62 KB, was ~170 MB).
+
+### install.bat false-error bug fix
+
+First test run by user showed both "Skill install complete!" *and* "ERROR: Install failed with code 1" — robocopy actually succeeded (8 files copied to destination, verified). Two causes: robocopy exit code 1 means "files copied" (not failure), and the success branch's `^(per-user MSI install^).` confused cmd's parenthesis counter inside `IF (…) ELSE (…)`, dropping execution into ELSE.
+
+Fix: rewrote with `goto :success / goto :failure` labels (no parenthesised IF block), silenced robocopy entirely with `/NJH /NJS /NFL /NDL /NC /NS /NP >nul 2>&1` so the verbose summary table — which has a literal "FAILED" column header that panics non-technical testers — never appears, reframed the failure message to say "exit code N, anything 8 or above" to distinguish real errors from robocopy's success-but-busy codes.
+
+### Open low-priority follow-up
+
+GitHub Actions Node.js 20 deprecation surfaced as a CI annotation for `actions/checkout@v4`, `actions/setup-dotnet@v4`, `softprops/action-gh-release@v2`. Hard cutoff: September 2026. Bump to v5/Node.js-24-supporting versions before then. Tracked in TODO.
+
+---
+
 ## 2026-05-02 — Session 21 — Skill scaffold complete (external)
 
 ### Goal

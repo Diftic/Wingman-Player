@@ -100,4 +100,41 @@ public sealed class PlayerCommandBridge
             _logger.LogDebug(ex, "Bridge EnsureOverlayVisibleAsync failed");
         }
     }
+
+    /// <summary>
+    /// Move the overlay off-screen if it isn't already hidden. Used by the
+    /// "minimize player" voice tool and any HTTP-driven hide path (e.g. the
+    /// idle-timeout expiry initiated from the renderer state-change stream).
+    /// </summary>
+    public async Task EnsureOverlayHiddenAsync()
+    {
+        var overlay = _overlay;
+        if (overlay is null) return;
+        try
+        {
+            await overlay.Dispatcher.InvokeAsync(overlay.EnsureHidden);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Bridge EnsureOverlayHiddenAsync failed");
+        }
+    }
+
+    /// <summary>
+    /// Start a 15-second idle countdown after which the overlay self-hides.
+    /// Used by /player/stop. Cancelled by any playback-starting command (or
+    /// by a renderer state→PLAYING message).
+    /// </summary>
+    public void StartIdleHideCountdown()
+    {
+        _overlay?.StartIdleHideCountdown();
+    }
+
+    /// <summary>
+    /// Cancel any running idle countdown. Called by playback-starting routes.
+    /// </summary>
+    public void CancelIdleHideCountdown()
+    {
+        _overlay?.CancelIdleHideCountdown();
+    }
 }
