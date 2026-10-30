@@ -3,13 +3,23 @@
 ## Current state (2026-10-30)
 
 - **One repo for the player and the YouTube skill**, as the user asked. Branch `feat/youtube-skill` (from `master` 8efb3eb),
-  **committed as f8910ec (2026-10-30), not pushed, not merged.**
+  committed as f8910ec, **merged to `master` as a13f7b1 and pushed (2026-10-30)**. No tag yet, so nothing is released.
   - `skill/youtube_video_player/`: the skill, as installed in `custom_skills`. Moved from the scratch repo
     `D:\PycharmProjects\Wingman-YouTube-Skill`, created this session. Its leftovers (empty `.git`, the replaced
     `release.yml` and handover) still need deleting by the user, since the safety hook blocked `rm -rf`. The older copy in
     `D:\PycharmProjects\wingman-skills\youtube_video_player` is untouched and now stale.
   - `skill/tests/` (50 pytest, green), `skill/docs/` (skill DEVLOG/TODO/specs), `skill/README.md`, `skill/build_zip.py`.
   - `release-notes/v1.0.0.md`: the release body. The skill reads its first 600 chars and Wingman may speak them.
+- **Installed in the live test env (2026-10-30)**, from master a13f7b1:
+  - skill → `%APPDATA%\ShipBit\WingmanAI\custom_skills\youtube_video_player` (it's a custom skill, so custom_skills is its live location)
+  - player → `%LOCALAPPDATA%\Programs\Wingman Player\` (where the MSI installs and where the skill looks), built with the CI
+    publish flags and `-p:Version=1.0.0`. Smoke test: `/player/state` answers, and no false update is offered.
+  - Wingman had not been restarted, so the skill isn't loaded yet. It also has to be enabled on a wingman in the UI.
+- **Version bug found and fixed (uncommitted):** `src/wingman_player.csproj` hard-coded `AssemblyVersion 0.5.0.0`, and
+  `UpdateChecker` reads AssemblyVersion. `-p:Version` from CI did not override it, so every build thought it was 0.5.0.
+  Installed v0.5.1 players therefore keep offering 0.5.1, and a v1.0.0 built that way would keep offering 1.0.0. Fix:
+  only `<Version>1.0.0</Version>`, so AssemblyVersion/FileVersion follow it. Verified: the rebuilt 1.0.0 reports no update.
+  **Must be committed before tagging v1.0.0.**
 - **One shared version, one release.** The player's `UpdateChecker.cs` and the skill's updater both read
   `api.github.com/repos/Diftic/Wingman-Player/releases/latest`. Every release must therefore carry the exe, the MSI
   and the skill zip + `.sha256`. Prefixed skill tags would make a skill-only release "latest" and break installed
@@ -45,7 +55,8 @@
 
 ## Open (owner: the user)
 
-- Merge `feat/youtube-skill` (f8910ec) to `master` and push. Then tag `v1.0.0` to publish the first combined release.
+- Tag `v1.0.0` to publish the first combined release (best after one live test of the skill).
+- `master` also carries `instructions.json` (5c59882 "update test", 2026-09-20, pushed from GitHub before this merge). It looks unrelated to the player; keep or remove.
 - Whether to rename the repo later (GitHub redirects the API, but that hasn't been checked with the player's HttpClient).
 - No LICENSE file.
 - Users on the old 0.1.0 Discord zip must install 1.0.0 once by hand (0.1.0 has no updater).
@@ -54,8 +65,8 @@
 
 ## Next step
 
-Merge f8910ec to `master` and push (the user’s call). Then: tag `v1.0.0`, watch the Actions run,
-install the skill from the release into `custom_skills` and test it live.
+Commit the csproj version fix. Restart Wingman, enable the YouTube skill, and test it live (play, search, update check). Then tag `v1.0.0`
+(the user's call), watch the Actions run, and check the release has the exe, MSI, zip and sha256.
 
 ## Evidence
 
