@@ -668,7 +668,18 @@ public partial class OverlayWindow : Window
             try
             {
                 var current = GetAppVersionLabel();
-                if (info.HasUpdate)
+                if (info.HasUpdate && SelfUpdateService.IsSkillInstall())
+                {
+                    // The skill swaps skill and player together.
+                    MessageBox.Show(
+                        this,
+                        $"A new version is available.\n\nCurrent: v{current}\nLatest: v{info.Version}\n\n" +
+                        "Ask your Wingman to \"update the YouTube skill\"; it updates the player too.",
+                        "Wingman Player: Update available",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else if (info.HasUpdate)
                 {
                     var result = MessageBox.Show(
                         this,

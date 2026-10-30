@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-10-30 — Session 20 — One zip, install.bat, player inside the skill (1.0.1)
+
+- The user asked whether the installer puts the skill into custom_skills. It never did: the MSI only installed the
+  player. Their call: drop the installer for one zip with a .bat, and put the player inside the skill
+  (`custom_skills\youtube_video_player\player\`).
+- Release asset is now `Wingman-Player-vX.Y.Z.zip`: install.bat plus the skill folder with the player. The
+  skill-only `youtube_video_player-vX.Y.Z.zip` stays for 1.0.0 skills, whose updater looks for that name.
+  No MSI, no standalone exe.
+- Updater: it reads the bundle, takes player file types (.exe/.html/.js/.css/.png/.json) only under `player/`,
+  skips the top-level install.bat, and requires `player/Wingman-Player.exe`. Limits are 150 MB zip / 400 MB
+  unpacked. The skill stops the player (taskkill) only after the zip is verified, then swaps.
+- The skill finds the player in `player\` first, then the old MSI location. In the player, "Check for updates"
+  inside a skill install only says to ask Wingman, and `UpdateChecker` no longer needs an exe asset.
+- Verified locally: the CI-equivalent build gives a 72.6 MB zip that passes `unpack`. install.bat installed it into the
+  live custom_skills, Core says ok, and the player runs from `player\` as 1.0.1.
+
 ## 2026-10-30 — Session 19 — GitHub distribution, self-update, one repo with the player, v3 skill API
 
 - The skill moved into the player's repo (`Diftic/Wingman-Player`, folder `skill/`). One shared version and one release

@@ -14,7 +14,7 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
         <!-- CI passes -p:Version from the tag; AssemblyVersion/FileVersion follow it, and the update check reads AssemblyVersion -->
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <!-- DPI is configured in app.manifest (PerMonitorV2); suppress WinForms conflict warning -->
         <NoWarn>$(NoWarn);WFO0003</NoWarn>
         <!-- Required for CsWin32 pointer parameters (e.g. GetWindowThreadProcessId) -->

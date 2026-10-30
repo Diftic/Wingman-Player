@@ -16,12 +16,10 @@ Searches go to the YouTube Data API v3 (user-provided key, Wingman secret
 `youtube_api_key`). Written for the v3 skill API (api_version: 3).
 Player commands go to http://127.0.0.1:17330/player/* (configurable).
 
-Wingman Player ships independently at
-https://github.com/Diftic/Wingman-Player/releases/latest (MSI installer). When
-`player_exe_path` is empty, the skill resolves the canonical install location
-(%LocalAppData%\\Programs\\Wingman Player\\Wingman-Player.exe) and auto-launches
-from there. If neither override nor canonical install is found, the skill
-points the user at the GitHub installer.
+Wingman Player ships inside this skill folder (player\\), from the same
+release zip (https://github.com/Diftic/Wingman-Player/releases/latest, run
+install.bat). When `player_exe_path` is empty the skill launches that copy,
+falling back to the old MSI location for installs from before 1.0.1.
 
 Author: Mallachi
 """
@@ -32,6 +30,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import sys
 import webbrowser
 from pathlib import Path
@@ -94,7 +93,9 @@ async def _github_fetch(url: str, max_bytes: int) -> tuple[int, bytes]:
         "User-Agent": "Wingman-YouTube-Skill",
         "Accept": "application/vnd.github+json",
     }
-    timeout = aiohttp.ClientTimeout(total=60)
+    # The release zip carries the player (~65 MB): no total cap, but a stalled
+    # read still gives up.
+    timeout = aiohttp.ClientTimeout(total=None, sock_connect=30, sock_read=60)
     async with aiohttp.ClientSession(headers=headers, trust_env=False) as session:
         for _ in range(_MAX_REDIRECTS + 1):
             if not updater.allowed_url(url):
@@ -114,17 +115,50 @@ async def _github_fetch(url: str, max_bytes: int) -> tuple[int, bytes]:
     raise updater.UpdateError("too many redirects")
 
 
-class YoutubeVideoPlayer(Skill):
-    VERSION = "1.0.0"
+_PLAYER_EXE_NAME = "Wingman-Player.exe"
+# Time for a killed player to release its files before they are swapped.
+_PLAYER_EXIT_SECONDS = 2
+_PLAYER_MISSING = (
+    "YouTube Video Player: Wingman Player isn't installed. It comes in the "
+    "same zip as this skill: say 'download the Wingman Player' and I'll open "
+    "the download page in your browser. Unzip it, run install.bat, then "
+    "restart Wingman."
+)
+_PLAYER_UNREACHABLE = (
+    "I can't reach Wingman Player. It ships with this skill; if it's missing, "
+    "say 'download the Wingman Player' and I'll open the download page. Unzip "
+    "it, run install.bat, restart Wingman and say your request again."
+)
 
-    # Stable GitHub "latest release" redirect to the MSI asset. We deliberately
-    # never auto-fetch this URL — opening it is a user-initiated action via the
-    # `download_player_installer` voice tool below. Auto-launching a download
-    # on skill activation would look indistinguishable from malware.
-    PLAYER_MSI_URL = (
-        "https://github.com/Diftic/Wingman-Player/releases/latest/"
-        "download/Wingman-Player-Setup.msi"
+
+def _find_player() -> str | None:
+    """The player that ships in this skill's player\\ folder, else the one the
+    old MSI installed (releases before 1.0.1), else None."""
+    candidates = [Path(current_dir) / updater.PLAYER_DIR / _PLAYER_EXE_NAME]
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
+    if local_appdata:
+        candidates.append(Path(local_appdata) / "Programs" / "Wingman Player" / _PLAYER_EXE_NAME)
+    return next((str(path) for path in candidates if path.exists()), None)
+
+
+def _stop_player() -> None:
+    """End every running Wingman Player so its files can be replaced. The
+    skill launches it again on the next playback request."""
+    subprocess.run(
+        ["taskkill", "/F", "/IM", _PLAYER_EXE_NAME],
+        capture_output=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        check=False,
     )
+
+
+class YoutubeVideoPlayer(Skill):
+    VERSION = "1.0.1"
+
+    # The release page, where the zip with skill + player is. We never open it
+    # on our own; the `download_player_installer` voice tool opens it when the
+    # user asks. Opening a download on activation would look like malware.
+    RELEASES_PAGE_URL = updater.RELEASES_PAGE_URL
 
     def __init__(
         self,
@@ -207,51 +241,29 @@ class YoutubeVideoPlayer(Skill):
         # later when the user enters it via Wingman Settings → Secrets.
         self._init_search(self._api_key or "")
 
-        # Resolve the player exe: user override wins, otherwise probe the
-        # canonical MSI install location. The MSI installs to
-        # %LocalAppData%\Programs\Wingman Player\ by default (per-user scope).
-        # When the player isn't found we surface a visible warning badge into
-        # the Wingman chat panel (not just the server log) so the user
-        # discovers the missing-install at activation time. The badge tells
-        # the user how to ask for the download — we do NOT auto-launch the
-        # browser. Auto-launching a download URL on startup is malware-shaped
+        # Resolve the player exe: user override wins, then the player that
+        # ships inside this skill folder (player\), then the old MSI location
+        # (%LocalAppData%\Programs\Wingman Player\, releases before 1.0.1).
+        # When none is found we show a visible warning; the user asks for the
+        # download page themselves. Opening a URL on startup is malware-shaped
         # behaviour; consent must be an explicit user action.
         resolved_exe = str(player_exe_path or "").strip()
 
         if resolved_exe and not Path(resolved_exe).exists():
             msg = (
                 "YouTube Video Player: configured player_exe_path does not "
-                f"exist ({resolved_exe}). Either clear the override to use "
-                "the default install location, or say 'download the Wingman "
-                "Player installer' and I'll open the MSI in your default "
-                "browser."
+                f"exist ({resolved_exe}). Clear the override to use the player "
+                "that ships with this skill."
             )
             logger.warning(msg)
             self.log.warning(msg)
         elif not resolved_exe:
-            local_appdata = os.environ.get("LOCALAPPDATA", "")
-            if local_appdata:
-                default_path = (
-                    Path(local_appdata)
-                    / "Programs"
-                    / "Wingman Player"
-                    / "Wingman-Player.exe"
-                )
-                if default_path.exists():
-                    resolved_exe = str(default_path)
-                    logger.info("Using installed player at %s", resolved_exe)
-                else:
-                    msg = (
-                        "YouTube Video Player: Wingman Player isn't "
-                        "installed yet. Say 'download the Wingman Player "
-                        "installer' and I'll open the .msi download in "
-                        "your default browser. After running the installer "
-                        "(per-user, no admin rights needed), restart "
-                        "Wingman (or re-activate this skill in your wingman "
-                        "config) so I can pick up the new install."
-                    )
-                    logger.warning(msg)
-                    self.log.warning(msg)
+            resolved_exe = _find_player() or ""
+            if resolved_exe:
+                logger.info("Using player at %s", resolved_exe)
+            else:
+                logger.warning(_PLAYER_MISSING)
+                self.log.warning(_PLAYER_MISSING)
 
         self._player = PlayerClient(
             host=str(player_host),
@@ -420,13 +432,7 @@ class YoutubeVideoPlayer(Skill):
 
         # Try to bring the player up before we burn a search call.
         if not await self._player.ensure_running():
-            return (
-                "I can't reach Wingman Player. If it isn't installed yet, "
-                "download the installer from "
-                "https://github.com/Diftic/Wingman-Player/releases/latest "
-                "(grab Wingman-Player-Setup.msi). After installing, just say "
-                "your request again."
-            )
+            return _PLAYER_UNREACHABLE
 
         results = await self._search.search(query, max_results=5)
         if results is None:
@@ -504,11 +510,7 @@ class YoutubeVideoPlayer(Skill):
             return "That result doesn't have a playable videoId."
 
         if not await self._player.ensure_running():
-            return (
-                "I can't reach Wingman Player. If it isn't installed, grab the "
-                "installer at https://github.com/Diftic/Wingman-Player/releases/latest "
-                "and try again."
-            )
+            return _PLAYER_UNREACHABLE
 
         if not await self._player.load_youtube(video_id=video_id):
             return "Player rejected the load."
@@ -718,31 +720,29 @@ class YoutubeVideoPlayer(Skill):
 
     @tool(
         description=(
-            "Open the Wingman Player MSI installer download in the user's "
-            "default web browser (NOT Wingman's embedded WebView). Use this "
-            "when the user says 'download the Wingman Player installer', "
-            "'install the player', 'install Wingman Player', 'get the "
-            "player', or any phrasing indicating they want to start the "
-            "player installation. This is the consented response to the "
-            "'Wingman Player isn't installed yet' warning badge. The tool "
-            "only starts the download — the user runs the .msi themselves."
+            "Open the Wingman Player download page (GitHub releases) in the "
+            "user's default web browser (NOT Wingman's embedded WebView). Use "
+            "this when the user says 'download the Wingman Player', 'install "
+            "the player', 'get the player', or any phrasing indicating they "
+            "want to (re)install it. This is the consented response to the "
+            "'Wingman Player isn't installed' warning. The tool only opens the "
+            "page; the user downloads the zip and runs install.bat."
         )
     )
     async def download_player_installer(self) -> str:
         try:
-            webbrowser.open(self.PLAYER_MSI_URL, new=2)
+            webbrowser.open(self.RELEASES_PAGE_URL, new=2)
         except Exception as ex:  # noqa: BLE001
             logger.warning("Could not open default browser: %s", ex)
             return (
                 "I couldn't open your default browser. Please copy this URL "
-                f"into your browser manually: {self.PLAYER_MSI_URL}"
+                f"into your browser manually: {self.RELEASES_PAGE_URL}"
             )
         return (
-            "Opened the Wingman Player MSI download in your default "
-            "browser. Run the installer once it finishes downloading — "
-            "it installs per-user, no admin rights needed. After it's "
-            "installed, restart Wingman (or re-activate this skill in "
-            "your wingman config) so I can pick up the new install."
+            "Opened the Wingman Player download page in your default browser. "
+            "Download the Wingman-Player zip, unzip it and run install.bat; it "
+            "puts the skill and the player into Wingman's custom_skills folder. "
+            "Then restart Wingman."
         )
 
     # ------------------------------------------------------------------
@@ -813,10 +813,14 @@ class YoutubeVideoPlayer(Skill):
                         f"Ask the user whether to install version {release.version}."
                     )
                 zip_body, sha_text = await updater.download(_github_fetch, release)
-                await asyncio.to_thread(
-                    updater.verify_and_install,
-                    zip_body, sha_text, release.version, Path(current_dir),
+                files = await asyncio.to_thread(
+                    updater.unpack, zip_body, sha_text, release.version,
                 )
+                # Only a verified update stops the player: its exe and
+                # Renderer files are part of the swap.
+                await asyncio.to_thread(_stop_player)
+                await asyncio.sleep(_PLAYER_EXIT_SECONDS)
+                await asyncio.to_thread(updater.install, files, Path(current_dir))
             except Exception as ex:  # noqa: BLE001
                 logger.warning("Skill update install failed: %s", ex)
                 return (

@@ -27,5 +27,7 @@ tools/
 # Skill release builds
 youtube_video_player-v*.zip
 youtube_video_player-v*.zip.sha256
+Wingman-Player-v*.zip
+Wingman-Player-v*.zip.sha256
 .update_staging/
 __pycache__/

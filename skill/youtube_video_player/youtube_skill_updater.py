@@ -2,15 +2,17 @@
 
 The skill lives in the Wingman Player repo, https://github.com/Diftic/Wingman-Player,
 and ships in the same releases as the player (one shared version).
-Each release (built by .github/workflows/build.yml on a version tag) carries,
-next to the player exe and MSI, youtube_video_player-v<x.y.z>.zip and its .sha256.
+Each release (built by .github/workflows/build.yml on a version tag) carries
+Wingman-Player-v<x.y.z>.zip and its .sha256: install.bat plus the skill folder,
+with the player in its player/ subfolder. One update replaces both.
 
 check() reads the latest release and says whether it is newer than the running
 version. It never downloads code. download_and_install() runs only when the
 user asks for it (the install_skill_update voice tool). It verifies the
-checksum, accepts only plain file names inside the skill folder, checks the
-zip's own version stamps match the release tag, then swaps the files in place,
-rolling back if any move fails. Wingman loads the new code on its next restart.
+checksum, accepts only plain file names inside the skill folder (player file
+types only under player/), checks the zip's own version stamps match the
+release tag, then swaps the files in place, rolling back if any move fails.
+Wingman loads the new code on its next restart.
 
 Pure logic, no Wingman imports. fetch() is injectable so tests run without a
 network; the caller's fetch must refuse any URL (including redirect targets)
@@ -35,8 +37,13 @@ REPO = "Diftic/Wingman-Player"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 RELEASES_PAGE_URL = f"https://github.com/{REPO}/releases/latest"
 SKILL_FOLDER = "youtube_video_player"
+BUNDLE_NAME = "Wingman-Player"
+PLAYER_DIR = "player"
+PLAYER_EXE = f"{PLAYER_DIR}/Wingman-Player.exe"
 STAGING_DIR = ".update_staging"
-REQUIRED_FILES = ("__init__.py", "main.py", "default_config.yaml")
+REQUIRED_FILES = ("__init__.py", "main.py", "default_config.yaml", PLAYER_EXE)
+# Top-level files in the release zip that are for the person installing by hand.
+INSTALLER_FILES = frozenset({"install.bat"})
 # __init__.py carries the version, so it is moved last: a half-done install
 # that somehow survives rollback still reports the old version.
 COMMIT_FILE = "__init__.py"
@@ -48,10 +55,13 @@ ALLOWED_HOSTS = frozenset({
     "github-releases.githubusercontent.com",
 })
 ALLOWED_SUFFIXES = frozenset({".py", ".yaml", ".json", ".png", ".md", ".txt"})
+# The player (exe + Renderer web files) may only bring these, and only under player/.
+PLAYER_SUFFIXES = frozenset({".exe", ".html", ".js", ".css", ".png", ".json"})
 MAX_JSON_BYTES = 256 * 1024
 MAX_SHA_BYTES = 1024
-MAX_ZIP_BYTES = 20 * 1024 * 1024
-MAX_UNPACKED_BYTES = 50 * 1024 * 1024
+# The self-contained player exe is ~175 MB unpacked, ~65 MB zipped.
+MAX_ZIP_BYTES = 150 * 1024 * 1024
+MAX_UNPACKED_BYTES = 400 * 1024 * 1024
 MAX_NOTES_CHARS = 600
 
 _VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
@@ -118,7 +128,7 @@ def parse_release(raw: bytes) -> Release:
     assets = data.get("assets")
     if not isinstance(assets, list):
         raise UpdateError("release has no assets")
-    zip_name = f"{SKILL_FOLDER}-v{version}.zip"
+    zip_name = f"{BUNDLE_NAME}-v{version}.zip"
     notes = data.get("body") if isinstance(data.get("body"), str) else ""
     return Release(
         version=version,
@@ -147,6 +157,8 @@ def _member_path(name: str) -> str | None:
     An allowlist, not a blacklist: Windows aliases names with trailing dots,
     reserved device names and short names, so only plain names get through.
     """
+    if name in INSTALLER_FILES:
+        return None
     prefix = SKILL_FOLDER + "/"
     if not name.startswith(prefix):
         raise UpdateError(f"zip entry outside {SKILL_FOLDER}/: {name[:80]!r}")
@@ -160,7 +172,8 @@ def _member_path(name: str) -> str | None:
         if (not _NAME_PART.match(part) or part.endswith(".") or "~" in part
                 or part.split(".")[0].lower() in _RESERVED):
             raise UpdateError(f"unsafe zip entry: {name[:80]!r}")
-    if Path(parts[-1]).suffix.lower() not in ALLOWED_SUFFIXES:
+    allowed = PLAYER_SUFFIXES if parts[0] == PLAYER_DIR else ALLOWED_SUFFIXES
+    if Path(parts[-1]).suffix.lower() not in allowed:
         raise UpdateError(f"unexpected file type in zip: {name[:80]!r}")
     return rel
 

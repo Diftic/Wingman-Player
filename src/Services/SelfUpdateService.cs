@@ -49,8 +49,31 @@ internal static class SelfUpdateService
         try { if (File.Exists(UpdateStatusPath)) File.Delete(UpdateStatusPath); } catch { }
     }
 
+    /// <summary>
+    /// True when this player ships inside the YouTube skill folder
+    /// (custom_skills\youtube_video_player\player\). The skill then updates
+    /// skill and player together, so the player must not swap its own files.
+    /// </summary>
+    public static bool IsSkillInstall()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+        return dir.Name.Equals("player", StringComparison.OrdinalIgnoreCase)
+            && dir.Parent is not null
+            && File.Exists(Path.Combine(dir.Parent.FullName, "main.py"));
+    }
+
     public static async Task ApplyAsync(UpdateInfo info, Action quit, ILogger? log = null)
     {
+        if (IsSkillInstall())
+        {
+            log?.LogInformation("Skill install — the YouTube skill applies updates, not the player");
+            return;
+        }
+        if (string.IsNullOrEmpty(info.MsiUrl) && string.IsNullOrEmpty(info.DownloadUrl))
+        {
+            log?.LogWarning("Update {Version} has no exe or MSI to apply", info.Version);
+            return;
+        }
         if (IsMsiInstall() && !string.IsNullOrEmpty(info.MsiUrl))
         {
             log?.LogInformation("MSI install detected — updating via msiexec");

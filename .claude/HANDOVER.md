@@ -2,7 +2,30 @@
 
 ## Current state (2026-10-30)
 
-- **Summary (latest, 18:40): v1.0.0 is RELEASED** (https://github.com/Diftic/Wingman-Player/releases/tag/v1.0.0).
+- **Latest (19:15): 1.0.1 is built and tested locally, UNCOMMITTED.** There's no installer any more: one zip plus
+  install.bat, and the player lives inside the skill.
+  - Why: the user asked whether the installer puts the skill into custom_skills. It never did; the MSI only
+    installed the player. Their decision (AskUserQuestion): drop the installer; the player goes in
+    `custom_skills\youtube_video_player\player\`; one update for both.
+  - Release assets from 1.0.1 (`build.yml`): `Wingman-Player-vX.Y.Z.zip` (install.bat + skill + player\) and the
+    skill-only `youtube_video_player-vX.Y.Z.zip`, kept for 1.0.0 skills whose updater looks for that name. Each
+    has a `.sha256`. WiX/MSI and standalone-exe steps are removed.
+  - The `installer/` folder (WiX) is now unused; delete it or keep it (user's call).
+  - Skill: `_find_player()` looks in `player\` first, then the old MSI path. `install_skill_update` verifies, then
+    taskkills the player, then swaps. Missing-player messages and the `download_player_installer` tool point to
+    the releases page (zip + install.bat).
+  - Updater: bundle name `Wingman-Player`, `PLAYER_SUFFIXES` only under `player/`, install.bat skipped, player exe
+    required, limits 150/400 MB. 57 tests green.
+  - Player: `UpdateChecker` no longer needs the exe asset. `SelfUpdateService.IsSkillInstall()`: inside the skill
+    it never swaps itself, and "Check for updates" says to ask Wingman. csproj Version 1.0.1.
+  - `skill/install.bat` (CRLF, kept that way by `.gitattributes`): taskkill, robocopy /E into custom_skills, message.
+  - Verified locally: CI-equivalent publish → 72.6 MB zip passes `unpack`. install.bat (run from the unzipped zip)
+    installed into the live custom_skills, Core verdict ok, `_find_player()` points to `player\`, and the player
+    runs from there as 1.0.1 with no false update. Wingman has not been restarted on 1.0.1 yet.
+  - Docs: README, skill README, DEVLOG Session 20, `release-notes/v1.0.1.md`, .gitignore.
+  - **Next:** the user's go-ahead to commit, push and tag v1.0.1, then check the release assets and give the zip link
+    `https://github.com/Diftic/Wingman-Player/releases/download/v1.0.1/Wingman-Player-v1.0.1.zip`.
+- **Summary (18:40): v1.0.0 is RELEASED** (https://github.com/Diftic/Wingman-Player/releases/tag/v1.0.0).
   - The user tested live ("works flawlessly") and asked to update git and make the installer.
   - The v3 port is commit 46ca105, tagged `v1.0.0`. Build & Release run 41099838020 succeeded in 2m45s.
   - Assets: `Wingman-Player-Setup.msi` (63.6 MB), `Wingman-Player.exe`, `youtube_video_player-v1.0.0.zip` (65 KB) and its
@@ -100,9 +123,10 @@
 
 ## Open (owner: the user)
 
-- Post the release link in Discord (the user's call).
+- Release v1.0.1 (commit, push, tag) or test it in Wingman first: the user's choice, pending.
+- Delete the now-unused `installer/` (WiX) folder, or keep it.
+- Post the release link in Discord (the user's call); after 1.0.1 it's the zip link, not the MSI.
 - ShipBit request: help text in the secret dialog (`skill/docs/TODO.md`).
-- Tag `v1.0.0` to publish the first combined release (best after one live test of the skill).
 - `master` also carries `instructions.json` (5c59882 "update test", 2026-09-20, pushed from GitHub before this merge). It looks unrelated to the player; keep or remove.
 - Whether to rename the repo later (GitHub redirects the API, but that hasn't been checked with the player's HttpClient).
 - No LICENSE file.
@@ -112,8 +136,10 @@
 
 ## Next step
 
-Nothing pending in the code. The user posts the release link in Discord. Next work, when wanted: a LICENSE file,
-bump the Node-20 actions, the ShipBit secret-dialog request, and deleting the stale wingman-skills copy.
+On the user's go-ahead: commit the 1.0.1 work (not `.claude/session-journal.md` or `Codex analysis.md`), push
+master, tag and push `v1.0.1`, and watch Build & Release. The first CI run of `build_zip.py --player` and the
+no-MSI workflow is the new risk. Then check the assets (two zips and two .sha256) and give the user the zip link.
+Later, when wanted: a LICENSE, bumping the Node-20 actions, and the stale wingman-skills copy.
 
 ## Evidence
 

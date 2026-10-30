@@ -18,10 +18,10 @@
 
 This repo also holds the **YouTube Video Player** skill for Wingman AI, in [`skill/`](skill/README.md). The skill lets you say *"play Bohemian Rhapsody by Queen"*, and it drives this player. Each [release](https://github.com/Diftic/Wingman-Player/releases/latest) carries both:
 
-- `Wingman-Player-Setup.msi`: the player (per-user install, no admin rights)
-- `youtube_video_player-vX.Y.Z.zip`: the skill. Extract it into `%AppData%\ShipBit\WingmanAI\custom_skills\`.
+- `Wingman-Player-vX.Y.Z.zip`: the skill with the player inside it, plus `install.bat`. Unzip it and run
+  `install.bat`; it copies everything into `%AppData%\ShipBit\WingmanAI\custom_skills\youtube_video_player\`.
 
-The player and the skill share one version, and both check this repo's releases for updates. Setup, the API key and how releases are cut: [skill/README.md](skill/README.md).
+The player and the skill share one version and update together: ask your Wingman to "update the YouTube skill". Setup, the API key and how releases are cut: [skill/README.md](skill/README.md).
 
 ---
 
@@ -51,14 +51,14 @@ The player and the skill share one version, and both check this repo's releases 
 
 ## Installation
 
-Two download options on the [Releases page](https://github.com/Diftic/Wingman-Player/releases):
-
-- **`Wingman-Player-Setup.msi`** — Per-user installer. Adds a Start Menu shortcut and wires up auto-update. Recommended.
-- **`Wingman-Player.exe`** — Standalone launcher. Run it directly from any folder, no installation.
+Since 1.0.1 the player ships inside the YouTube skill: download `Wingman-Player-vX.Y.Z.zip` from the
+[Releases page](https://github.com/Diftic/Wingman-Player/releases), unzip it and run `install.bat`. The player
+lands in `custom_skills\youtube_video_player\player\` and the skill starts it when needed. There is no MSI any
+more; releases up to 1.0.0 had one.
 
 Default toggle hotkey is **F8**.
 
-> Settings are stored in `%APPDATA%\wingman_player\`. Uninstalling the MSI leaves your settings behind; delete the folder manually if you want a clean slate.
+> Settings are stored in `%APPDATA%\wingman_player\`. Deleting the skill folder leaves them behind; delete that folder too if you want a clean slate.
 
 ---
 

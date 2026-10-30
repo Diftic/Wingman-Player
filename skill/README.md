@@ -29,7 +29,7 @@ Volume is intentionally **not** controlled by the skill — per-app volume is th
 ## Requirements
 
 - **Wingman AI** installed
-- **Wingman Player** — the overlay that shows the video ([installer](https://github.com/Diftic/Wingman-Player/releases/latest); the skill can open it for you)
+- **Wingman Player** — the overlay that shows the video. It ships inside this skill (`player\` folder).
 - **Free YouTube Data API v3 key** — see setup below
 
 ---
@@ -49,11 +49,13 @@ The key never leaves your machine — Wingman's SecretKeeper stores it locally. 
 
 ### 2. Install the skill
 
-1. Open the [latest release](https://github.com/Diftic/Wingman-Player/releases/latest) and download `youtube_video_player-vX.Y.Z.zip`.
-2. Extract it into `%AppData%\ShipBit\WingmanAI\custom_skills\`, so you end up with `custom_skills\youtube_video_player\main.py`.
+1. Open the [latest release](https://github.com/Diftic/Wingman-Player/releases/latest) and download `Wingman-Player-vX.Y.Z.zip`.
+2. Unzip it and run `install.bat`. It closes a running Wingman Player and copies the skill, with the player in its
+   `player\` folder, into `%AppData%\ShipBit\WingmanAI\custom_skills\youtube_video_player\`.
 3. Restart Wingman and switch the skill on for your Wingman.
 
-If Wingman Player isn't installed yet, the skill shows a yellow notice. Say *"download the Wingman Player installer"* and run the installer (per-user, no admin rights), then restart Wingman.
+Had the old `Wingman-Player-Setup.msi` (1.0.0 or older)? You can uninstall it in Windows Settings → Apps; the skill
+now uses the player in its own folder.
 
 ### 3. First launch
 
@@ -67,9 +69,9 @@ You're ready: say **"play Never Gonna Give You Up by Rick Astley"** and the play
 
 ## Updates
 
-At start, the skill reads the latest release info from this repo (one small request, nothing downloaded). If a newer version exists, Wingman shows a notice. Say *"update the YouTube skill"* and it downloads the release, checks its SHA-256 checksum, and replaces its own files. Restart Wingman to load the new version. Your settings and API key are kept, since Wingman stores them, not the skill folder.
+At start, the skill reads the latest release info from this repo (one small request, nothing downloaded). If a newer version exists, Wingman shows a notice. Say *"update the YouTube skill"* and it downloads the release zip, checks its SHA-256 checksum, closes the player and replaces its own files and the player's. Restart Wingman to load the new skill code; the player restarts on your next request. The player's own "Check for updates" only tells you to ask your Wingman. Your settings and API key are kept, since Wingman stores them, not the skill folder.
 
-Turn the check off with the **Check for Updates** setting. You can always update by hand: extract a newer release zip over the old folder.
+Turn the check off with the **Check for Updates** setting. You can always update by hand: run `install.bat` from a newer release zip.
 
 ---
 
@@ -127,6 +129,9 @@ This skill lives in the `skill/` folder of the Wingman Player repo.
   - `confidence.py` — composite confidence math (heuristic + LLM)
   - `youtube_skill_updater.py` — update check and verified install from this repo's releases
   - `default_config.yaml` — manifest, prompt, custom properties
+  - `player\` — Wingman Player (exe + Renderer); only in the release zip, built by CI
+- `skill/install.bat` — the installer at the top of the release zip
+- `skill/build_zip.py` — builds the release zip (with `--player`) and the skill-only zip
 - `skill/tests/` — pytest, no network needed
 - `skill/docs/` — the skill's dev log, TODO and design notes
 - `release-notes/` (repo root) — one file per version; the text becomes the release body Wingman can read out
@@ -139,7 +144,7 @@ The player and the skill share one version and one GitHub release, because both 
 2. Write `release-notes/vX.Y.Z.md` (short; Wingman may read it aloud).
 3. Commit, then `git tag vX.Y.Z` and `git push origin master vX.Y.Z`.
 
-The Build & Release workflow builds the player exe and MSI, runs the skill tests, checks the skill version matches the tag, builds `youtube_video_player-vX.Y.Z.zip` and its `.sha256`, and publishes all four files in one release. Installed players and skills both see it at their next start.
+The Build & Release workflow runs the skill tests, checks the skill version matches the tag, builds the player, and publishes `Wingman-Player-vX.Y.Z.zip` (install.bat + skill + player; the skill updates from this) and `youtube_video_player-vX.Y.Z.zip` (skill only, for skills still on 1.0.0), each with a `.sha256`. Bump `<Version>` in `src/wingman_player.csproj` too, so a local build reports the right version.
 
 ---
 

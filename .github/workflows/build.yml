@@ -43,7 +43,8 @@ jobs:
           pip install pytest
           python -m pytest -q skill/tests
 
-      - name: Build skill zip
+      # Skill only, for skills on 1.0.0: their updater looks for this name.
+      - name: Build skill-only zip
         shell: bash
         run: python skill/build_zip.py "youtube_video_player-$GITHUB_REF_NAME.zip"
 
@@ -64,35 +65,19 @@ jobs:
             -p:Version=${{ steps.version.outputs.VERSION }} \
             -o artifacts
 
-      - name: Prepare portable exe
-        shell: pwsh
-        run: |
-          Copy-Item "artifacts\Wingman-Player.exe" "Wingman-Player.exe"
-
-      - name: Install WiX Toolset
-        run: dotnet tool install --global wix --version "5.*"
-
-      - name: Build MSI installer
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path "installer\stage" -Force | Out-Null
-          Copy-Item "artifacts\*" "installer\stage\" -Recurse -Force
-          Copy-Item "src\Assets\icon.ico" "installer\"
-
-          cd installer
-          wix extension add WixToolset.UI.wixext/5.0.2
-          wix build installer.wxs `
-            -ext WixToolset.UI.wixext `
-            -o "..\Wingman-Player-Setup.msi" `
-            -arch x64 `
-            -define ProductVersion=${{ steps.version.outputs.VERSION }}
+      # What users download and what the skill updates from: install.bat plus
+      # the skill folder with the player in youtube_video_player/player/.
+      # No MSI: everything lives in Wingman's custom_skills folder.
+      - name: Build release zip
+        shell: bash
+        run: python skill/build_zip.py "Wingman-Player-$GITHUB_REF_NAME.zip" --player artifacts
 
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            Wingman-Player.exe
-            Wingman-Player-Setup.msi
+            Wingman-Player-${{ github.ref_name }}.zip
+            Wingman-Player-${{ github.ref_name }}.zip.sha256
             youtube_video_player-${{ github.ref_name }}.zip
             youtube_video_player-${{ github.ref_name }}.zip.sha256
           name: Wingman Player ${{ github.ref_name }}

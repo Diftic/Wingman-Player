@@ -52,16 +52,12 @@ internal static class UpdateChecker
             var msi = release.Assets
                 .FirstOrDefault(a => a.Name.Equals("Wingman-Player-Setup.msi", StringComparison.OrdinalIgnoreCase));
 
-            if (exe is null)
-            {
-                log?.LogWarning("Update {Tag} has no .exe asset — skipping", release.TagName);
-                return None;
-            }
-
+            // Since 1.0.1 releases carry only the zip (skill + player), which the
+            // skill installs; exe and MSI are there only on older releases.
             log?.LogInformation("Update available: {Tag} — exe: {ExeUrl}, msi: {MsiUrl}",
-                release.TagName, exe.BrowserDownloadUrl, msi?.BrowserDownloadUrl ?? "none");
+                release.TagName, exe?.BrowserDownloadUrl ?? "none", msi?.BrowserDownloadUrl ?? "none");
             return new UpdateInfo(true, release.TagName.TrimStart('v'),
-                exe.BrowserDownloadUrl, msi?.BrowserDownloadUrl ?? string.Empty);
+                exe?.BrowserDownloadUrl ?? string.Empty, msi?.BrowserDownloadUrl ?? string.Empty);
         }
         catch (Exception ex)
         {

@@ -28,6 +28,7 @@ def make_zip(version: str, extra: dict[str, bytes] | None = None,
         "youtube_video_player/__init__.py": f'__version__ = "{version}"\n'.encode(),
         "youtube_video_player/main.py": f'class X:\n    VERSION = "{main_version or version}"\n'.encode(),
         "youtube_video_player/default_config.yaml": b"name: x\n",
+        "youtube_video_player/player/Wingman-Player.exe": b"MZ",
         **(extra or {}),
     }
     buf = io.BytesIO()
@@ -43,7 +44,7 @@ def sha(raw: bytes) -> str:
 
 def release_json(tag: str, zip_url: str | None = None) -> bytes:
     version = tag.lstrip("v")
-    name = f"youtube_video_player-v{version}.zip"
+    name = f"Wingman-Player-v{version}.zip"
     return json.dumps({
         "tag_name": tag,
         "body": "Fixes things.\x07",
@@ -85,7 +86,7 @@ def test_newer_release_is_reported_with_its_assets():
     release = run(up.check(gh, "1.0.0"))
     assert release is not None
     assert release.version == "1.1.0"
-    assert release.zip_url == f"{BASE}v1.1.0/youtube_video_player-v1.1.0.zip"
+    assert release.zip_url == f"{BASE}v1.1.0/Wingman-Player-v1.1.0.zip"
     assert release.notes == "Fixes things."  # control characters stripped
     assert gh.requests == [(up.LATEST_RELEASE_URL, up.MAX_JSON_BYTES)]  # no code downloaded
 
@@ -107,9 +108,9 @@ def test_github_error_raises():
 
 
 @pytest.mark.parametrize("url", [
-    "https://evil.example/youtube_video_player-v1.1.0.zip",
-    f"{BASE}v1.1.0/../../../../evil/repo/releases/download/v1.1.0/youtube_video_player-v1.1.0.zip",
-    f"{BASE}v1.1.0/youtube_video_player-v1.1.0.zip?x=1",
+    "https://evil.example/Wingman-Player-v1.1.0.zip",
+    f"{BASE}v1.1.0/../../../../evil/repo/releases/download/v1.1.0/Wingman-Player-v1.1.0.zip",
+    f"{BASE}v1.1.0/Wingman-Player-v1.1.0.zip?x=1",
 ])
 def test_asset_url_must_be_exactly_this_repos_release_asset(url):
     with pytest.raises(up.UpdateError, match="unexpected download URL"):
@@ -131,7 +132,7 @@ def test_only_https_github_hosts_are_allowed(url, ok):
 def test_unpack_returns_skill_files_and_skips_pycache():
     raw = make_zip("1.1.0", {"youtube_video_player/__pycache__/main.cpython-312.pyc": b"x"})
     files = up.unpack(raw, sha(raw) + "  x.zip\n", "1.1.0")
-    assert sorted(files) == ["__init__.py", "default_config.yaml", "main.py"]
+    assert sorted(files) == ["__init__.py", "default_config.yaml", "main.py", "player/Wingman-Player.exe"]
 
 
 def test_unpack_refuses_wrong_checksum():
@@ -146,10 +147,36 @@ def test_unpack_refuses_wrong_checksum():
     "youtube_video_player/aux.py", "youtube_video_player/nul",
     "youtube_video_player/main.py.", "youtube_video_player/MAIN~1.PY",
     "youtube_video_player/evil.exe", "youtube_video_player/evil.pyd",
+    "youtube_video_player/sub/player/evil.exe", "youtube_video_player/player/evil.bat",
+    "youtube_video_player/player/evil.dll", "readme.exe", "install.cmd",
 ])
 def test_unpack_refuses_unsafe_entries(name):
     raw = make_zip("1.1.0", {name: b"x"})
     with pytest.raises(up.UpdateError):
+        up.unpack(raw, sha(raw), "1.1.0")
+
+
+def test_unpack_takes_the_player_and_skips_install_bat():
+    raw = make_zip("1.1.0", {
+        "install.bat": b"@echo off\r\n",
+        "youtube_video_player/player/Renderer/index.html": b"<html>",
+        "youtube_video_player/player/Renderer/player.js": b"",
+        "youtube_video_player/player/Renderer/assets/logo.png": b"",
+    })
+    files = up.unpack(raw, sha(raw), "1.1.0")
+    assert "install.bat" not in files
+    assert {"player/Wingman-Player.exe", "player/Renderer/index.html",
+            "player/Renderer/assets/logo.png"} <= set(files)
+
+
+def test_unpack_refuses_zip_without_the_player():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as archive:
+        archive.writestr("youtube_video_player/__init__.py", '__version__ = "1.1.0"\n')
+        archive.writestr("youtube_video_player/main.py", 'VERSION = "1.1.0"\n')
+        archive.writestr("youtube_video_player/default_config.yaml", "name: x\n")
+    raw = buf.getvalue()
+    with pytest.raises(up.UpdateError, match="lacks player/Wingman-Player.exe"):
         up.unpack(raw, sha(raw), "1.1.0")
 
 

@@ -76,12 +76,12 @@ prompt: |
     where to enter it (Wingman Settings → Secrets, entry `youtube_api_key`).
     Use when the user says "set my YouTube key", "the key is missing", or
     when searches are failing with a "key not configured" error.
-  - `download_player_installer`: Open the Wingman Player MSI download in
-    the user's default browser. Use when the user says "download the
-    Wingman Player installer", "install the player", "install Wingman
-    Player", "get the player", or any phrasing that signals consent to
-    start the player install (typically right after the "Wingman Player
-    isn't installed yet" warning badge).
+  - `download_player_installer`: Open the Wingman Player download page in
+    the user's default browser (the zip with skill + player and install.bat).
+    Use when the user says "download the Wingman Player", "install the
+    player", "get the player", or any phrasing that signals consent to
+    (re)install it (typically right after the "Wingman Player isn't
+    installed" warning).
 
   **Confidence rubric for `search_and_play_youtube`:**
   Pass `llm_confidence` between 0.0 and 1.0 reflecting how clearly the user
@@ -119,10 +119,11 @@ prompt: |
 
   **Player updates:**
   When `get_player_status` returns `updateAvailable: true` (with `latestVersion`),
-  mention it once in your response: a brief, helpful note like *"Heads up: Wingman
-  Player v{latestVersion} is available. Open the player's Settings menu and click
-  'Check for updates' to install."* Don't keep nagging — once per status check is
-  enough, and skip it entirely if the user is mid-task.
+  mention it once in your response: a brief, helpful note like *"Heads up: version
+  {latestVersion} of the YouTube skill and player is available. Say 'update the
+  YouTube skill' to install it."* The player and this skill update together through
+  `install_skill_update`. Don't keep nagging — once per status check is enough,
+  and skip it entirely if the user is mid-task.
 
   **Skill updates (this skill, not the player):**
   - "Is there an update for the YouTube skill?" → `check_for_skill_update`
@@ -193,12 +194,10 @@ custom_properties:
   - id: player_exe_path
     name: Player Executable Path (override)
     hint: >
-      Optional override. Leave empty to use the canonical install location
-      (%LocalAppData%\Programs\Wingman Player\Wingman-Player.exe — set up
-      automatically by the Wingman-Player-Setup.msi installer from
-      https://github.com/Diftic/Wingman-Player/releases/latest). Set this
-      only if you want to point at a different build (e.g. a local dev
-      build at D:\path\to\bin\Release\Wingman-Player.exe).
+      Optional override. Leave empty to use the player that ships with this
+      skill (its player folder, put there by install.bat). Set this only if
+      you want to point at a different build (e.g. a local dev build at
+      D:\path\to\bin\Release\Wingman-Player.exe).
     value: ""
     property_type: string
     required: false
@@ -243,7 +242,7 @@ hint:
     <li>Paste it when Wingman asks for <code>youtube_api_key</code>. To enter or
     change it later, use Settings → Secrets.</li>
     </ol>
-    <p><strong>Player install:</strong> Wingman Player ships separately at
-    <strong><a class="anchor" target="_blank" href="https://github.com/Diftic/Wingman-Player/releases/latest">github.com/Diftic/Wingman-Player</a></strong>. Run
-    <code>Wingman-Player-Setup.msi</code>; the skill auto-resolves the install
-    path. Override only if you keep a custom build elsewhere.</p>
+    <p><strong>Player:</strong> Wingman Player ships with this skill, from
+    <strong><a class="anchor" target="_blank" href="https://github.com/Diftic/Wingman-Player/releases/latest">github.com/Diftic/Wingman-Player</a></strong>.
+    Unzip the release and run <code>install.bat</code>; it puts the skill and the
+    player into <code>custom_skills</code>. Updates come through the skill.</p>
