@@ -13,11 +13,39 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # Every release reaches all installed players and skills, so only
+      # tagged commits on master are released, and the skill must carry the
+      # tag's version (player and skill share one version).
+      - name: Check tag, skill version and release notes
+        shell: bash
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master || { echo "tag is not on master"; exit 1; }
+          skill=$(sed -n 's/^__version__ = "\(.*\)"\r\{0,1\}$/\1/p' skill/youtube_video_player/__init__.py)
+          test "$skill" = "${{ steps.version.outputs.VERSION }}" || { echo "tag v${{ steps.version.outputs.VERSION }} but skill __version__ $skill"; exit 1; }
+          test -f "release-notes/$GITHUB_REF_NAME.md" || { echo "missing release-notes/$GITHUB_REF_NAME.md"; exit 1; }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test skill
+        shell: bash
+        run: |
+          pip install pytest
+          python -m pytest -q skill/tests
+
+      - name: Build skill zip
+        shell: bash
+        run: python skill/build_zip.py "youtube_video_player-$GITHUB_REF_NAME.zip"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -65,7 +93,11 @@ jobs:
           files: |
             Wingman-Player.exe
             Wingman-Player-Setup.msi
-          generate_release_notes: true
+            youtube_video_player-${{ github.ref_name }}.zip
+            youtube_video_player-${{ github.ref_name }}.zip.sha256
+          name: Wingman Player ${{ github.ref_name }}
+          # The skill reads (and Wingman may speak) the start of this body.
+          body_path: release-notes/${{ github.ref_name }}.md
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

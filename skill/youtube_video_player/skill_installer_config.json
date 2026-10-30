@@ -1,0 +1,19 @@
+{
+  "skill_name": "youtube_video_player",
+  "display_name": "YouTube Video Player",
+  "version": "1.0.0",
+  "files": [
+    "__init__.py",
+    "confidence.py",
+    "default_config.yaml",
+    "logo.png",
+    "main.py",
+    "player_client.py",
+    "youtube_search.py",
+    "youtube_skill_updater.py"
+  ],
+  "dirs": [],
+  "preserve_on_update": [
+    "default_config.yaml"
+  ]
+}

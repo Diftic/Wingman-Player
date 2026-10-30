@@ -23,3 +23,9 @@ installer/icon.ico
 
 # Local-only diagnostic harnesses (kept untracked per DEVLOG)
 tools/
+
+# Skill release builds
+youtube_video_player-v*.zip
+youtube_video_player-v*.zip.sha256
+.update_staging/
+__pycache__/
