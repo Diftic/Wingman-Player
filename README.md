@@ -14,6 +14,17 @@
 
 ---
 
+## The Wingman YouTube skill
+
+This repo also holds the **YouTube Video Player** skill for Wingman AI, in [`skill/`](skill/README.md). The skill lets you say *"play Bohemian Rhapsody by Queen"*, and it drives this player. Each [release](https://github.com/Diftic/Wingman-Player/releases/latest) carries both:
+
+- `Wingman-Player-Setup.msi`: the player (per-user install, no admin rights)
+- `youtube_video_player-vX.Y.Z.zip`: the skill. Extract it into `%AppData%\ShipBit\WingmanAI\custom_skills\`.
+
+The player and the skill share one version, and both check this repo's releases for updates. Setup, the API key and how releases are cut: [skill/README.md](skill/README.md).
+
+---
+
 ## Features
 
 - **Sci-fi overlay frame** — Transparent, always-on-top window with a 16:9 video cutout

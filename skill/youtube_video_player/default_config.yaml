@@ -1,0 +1,250 @@
+module: skills.youtube_video_player.main
+name: YoutubeVideoPlayer
+display_name: YouTube Video Player
+author: Mallachi
+auto_activate: true
+tags:
+  - YouTube
+  - Music
+  - Media
+
+description:
+  en: >
+    Voice-driven YouTube video playback. Drives the Wingman Player overlay
+    (a separate Windows app, installed independently from this skill).
+    Search by song, artist, or arbitrary query; auto-plays when the LLM is
+    confident in the user's intent and the top result matches, else returns
+    a top-5 list for the user to pick from. Transport controls (pause,
+    resume, stop, next, previous, seek) drive the overlay's embedded
+    YouTube player. Uses the YouTube Data API v3 — user provides their own
+    free API key.
+
+discovery_keywords:
+  - youtube
+  - play
+  - song
+  - music
+  - video
+  - artist
+  - band
+  - track
+  - playlist
+  - pause
+  - resume
+  - stop
+  - next
+  - previous
+  - skip
+  - seek
+  - rewind
+  - update
+  - forward
+  - fast forward
+
+prompt: |
+  You drive a YouTube media player through the Wingman YouTube skill. The player
+  is a separate overlay app; this skill talks to it over a localhost HTTP API.
+
+  **Available tools:**
+  - `search_and_play_youtube(query, song?, artist?, llm_confidence)`: Search YouTube
+    and either play the top result or return a top-5 list. Use this for any
+    "play X", "find X by Y", or "play something by Y" style request.
+  - `play_search_result(index)`: Play numbered item (1-5) from the most recent
+    search result list. Use after `search_and_play_youtube` returned a list and
+    the user picked one ("play 2", "the third one").
+  - `pause_player`: Pause playback.
+  - `resume_player`: Resume the currently loaded video. Use for "play", "resume",
+    "continue" when no new content is being requested.
+  - `stop_player`: Stop and unload. The player auto-hides 15 seconds later
+    unless the user resumes or starts something new.
+  - `hide_player`: Park the player off-screen without stopping playback.
+    Use when the user says "minimize player", "hide player", "tuck it
+    away" — audio keeps playing in the background.
+  - `show_player`: Bring the player back on-screen. Use when the user says
+    "show player", "bring it back", "unhide player". Resuming playback
+    also auto-shows the player, so this tool is mainly for the case where
+    the user wants the window visible without starting new playback.
+  - `next_track`, `previous_track`: Skip forward/back in the current playlist.
+  - `seek_player(seconds)`: Seek to a timestamp. Pass seconds as an integer.
+    Convert "1:30" to 90, "2 minutes" to 120, "thirty seconds in" to 30.
+    For "skip ahead 30 seconds", first call `get_player_status` to find the
+    current time, then call `seek_player(current + 30)`.
+  - `get_player_status`: Read what's playing, position, duration. Use for
+    "what's playing", "how long is this", "where am I in the song".
+  - `set_youtube_api_key`: Re-open the YouTube API key prompt. Use when the
+    user says "set my YouTube key", "the key is missing", or when searches
+    are failing with a "key not configured" error.
+  - `download_player_installer`: Open the Wingman Player MSI download in
+    the user's default browser. Use when the user says "download the
+    Wingman Player installer", "install the player", "install Wingman
+    Player", "get the player", or any phrasing that signals consent to
+    start the player install (typically right after the "Wingman Player
+    isn't installed yet" warning badge).
+
+  **Confidence rubric for `search_and_play_youtube`:**
+  Pass `llm_confidence` between 0.0 and 1.0 reflecting how clearly the user
+  named what they want. Always also pass `song` (the song/video name) and
+  `artist` (the artist/channel) when the user mentioned them — the skill uses
+  these to apply a heuristic boost on top of your confidence.
+
+  Examples:
+  - "Play Bohemian Rhapsody by Queen"           → llm_confidence=0.90, song="Bohemian Rhapsody", artist="Queen"
+  - "Play that one Queen song you know"         → llm_confidence=0.40, artist="Queen"
+  - "Find me something good"                    → llm_confidence=0.10
+  - "Play Never Gonna Give You Up"              → llm_confidence=0.85, song="Never Gonna Give You Up"
+  - "Anything by The Beatles"                   → llm_confidence=0.60, artist="The Beatles"
+
+  The skill computes composite = llm_confidence + heuristic_boost (0..0.30 from
+  channel/title match). If composite ≥ auto_play_threshold (default 0.98) it
+  auto-plays the top result. Otherwise it returns the top-5 list as a string —
+  speak it to the user and wait for their pick.
+
+  **When to use which tool:**
+  - User wants new content → `search_and_play_youtube`
+  - User picked from a numbered list ("play 2", "the third one") → `play_search_result(2)` or `play_search_result(3)`
+  - User says just "play" with no content → `resume_player`
+  - User says "pause", "stop", "next", "previous", "skip" → matching transport tool
+  - User says "minimize player", "hide player", "tuck it away" → `hide_player`
+  - User says "show player", "bring back the player", "unhide" → `show_player`
+  - User says "skip 30 seconds", "rewind 10 seconds" → `get_player_status` then `seek_player(current ± delta)`
+  - User says "go to 1:30", "skip to the chorus at 45 seconds" → `seek_player(seconds)`
+  - User asks "what's playing", "how long left" → `get_player_status`
+  - User says "set my YouTube key", "the YouTube key is missing", or searches
+    are returning "API key isn't configured" → `set_youtube_api_key`
+  - User says "install the player", "download the player installer", "get the
+    Wingman Player", or otherwise consents to the player install →
+    `download_player_installer`
+
+  **Player updates:**
+  When `get_player_status` returns `updateAvailable: true` (with `latestVersion`),
+  mention it once in your response: a brief, helpful note like *"Heads up: Wingman
+  Player v{latestVersion} is available. Open the player's Settings menu and click
+  'Check for updates' to install."* Don't keep nagging — once per status check is
+  enough, and skip it entirely if the user is mid-task.
+
+  **Skill updates (this skill, not the player):**
+  - "Is there an update for the YouTube skill?" → `check_for_skill_update`
+  - "Update the YouTube skill" / "install the update" → `install_skill_update`.
+    Only on the user's explicit request, never on your own. Afterwards, tell the
+    user to restart Wingman.
+
+  **Audio responses:**
+  Tools return strings designed to be spoken back. Pass them through to the user.
+  When the skill returns a numbered list, read out each option clearly so the user
+  knows what they're picking from.
+
+examples:
+  - en: "Play Never Gonna Give You Up by Rick Astley"
+  - en: "Find me something by The Beatles"
+  - en: "Play 2"
+  - en: "Pause"
+  - en: "Resume"
+  - en: "Skip to the next song"
+  - en: "Go back 30 seconds"
+  - en: "Seek to one minute thirty"
+  - en: "What's playing?"
+  - en: "Stop the music"
+
+custom_properties:
+  - id: youtube_api_key_input
+    name: Paste YouTube API Key
+    hint: >
+      Paste your YouTube Data API v3 key here, then click Save. The skill
+      moves the key into Wingman's secure secret storage and (best-effort)
+      clears this field. Use this if you dismissed the secret prompt or
+      want to update / rotate an existing key.
+      Get a free key at console.cloud.google.com — enable YouTube Data
+      API v3, create credentials → API key, restrict to that API.
+    value: ""
+    property_type: string
+    required: false
+
+  - id: daily_search_limit
+    name: Daily Search Limit
+    hint: >
+      Max YouTube searches per day. Each search costs 100 units of Google's
+      free-tier 10,000-unit quota, so 95-100 is the practical ceiling.
+    value: 100
+    property_type: number
+    required: false
+
+  - id: cache_ttl_minutes
+    name: Search Cache TTL (minutes)
+    hint: >
+      How long to cache identical normalized search queries. Saves a quota
+      call on repeats within the window.
+    value: 60
+    property_type: number
+    required: false
+
+  - id: auto_play_threshold
+    name: Auto-Play Confidence Threshold
+    hint: >
+      Composite confidence (LLM + heuristic) above which the top result
+      auto-plays without showing a list. 0.98 = strict (almost always shows
+      a list); 0.7 = generous (auto-plays more often).
+    value: 0.98
+    property_type: number
+    required: false
+
+  - id: player_host
+    name: Player Host
+    hint: "Hostname for the Wingman Player command server. Localhost by default."
+    value: 127.0.0.1
+    property_type: string
+    required: false
+
+  - id: player_port
+    name: Player Port
+    hint: "TCP port for the Wingman Player command server. Default 17330."
+    value: 17330
+    property_type: number
+    required: false
+
+  - id: player_exe_path
+    name: Player Executable Path (override)
+    hint: >
+      Optional override. Leave empty to use the canonical install location
+      (%LocalAppData%\Programs\Wingman Player\Wingman-Player.exe — set up
+      automatically by the Wingman-Player-Setup.msi installer from
+      https://github.com/Diftic/Wingman-Player/releases/latest). Set this
+      only if you want to point at a different build (e.g. a local dev
+      build at D:\path\to\bin\Release\Wingman-Player.exe).
+    value: ""
+    property_type: string
+    required: false
+
+  - id: auto_launch_player
+    name: Auto-Launch Player
+    hint: >
+      If true, the skill launches Wingman Player (canonical install or
+      override path) when it isn't already running.
+    value: true
+    property_type: boolean
+    required: false
+
+  - id: check_for_updates
+    name: Check for Updates
+    hint: >
+      If true, the skill reads the latest release info from
+      github.com/Diftic/Wingman-Player at start and shows a notice when
+      a newer version exists. Nothing is downloaded or installed until you say
+      'update the YouTube skill'.
+    value: true
+    property_type: boolean
+    required: false
+
+hint:
+  en: >
+    <p>Voice-driven YouTube playback. Searches via the YouTube Data API and
+    drives the Wingman Player overlay. Auto-plays when confident, lists top 5
+    when not.</p>
+    <p><strong>Setup:</strong> get a free YouTube Data API v3 key from
+    <a href="https://console.cloud.google.com">console.cloud.google.com</a>
+    (enable YouTube Data API v3, create credentials → API key, restrict to
+    that API). The skill prompts for the key on first use.</p>
+    <p><strong>Player install:</strong> Wingman Player ships separately at
+    <a href="https://github.com/Diftic/Wingman-Player/releases/latest">
+    github.com/Diftic/Wingman-Player</a>. Run
+    <code>Wingman-Player-Setup.msi</code>; the skill auto-resolves the install
+    path. Override only if you keep a custom build elsewhere.</p>
