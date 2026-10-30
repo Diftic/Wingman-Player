@@ -2,6 +2,18 @@
 
 ## Current state (2026-10-30)
 
+- **Summary (latest, 18:35):** master 9d5ef9a is pushed, but the v3 skill-API port and the missing-key fix are
+  **uncommitted**. Both are installed in `custom_skills`.
+  - Boot at 18:22 (log `wingman-core.2026-10-30_18-22-16.log`): the skill is eligible, and with no key it was
+    `validated and prepared` (l.81) instead of removed, so the missing-key fix works.
+  - The how-to-get-a-key text was posted (l.79) as a log line, invisible behind the secret dialog. Briefly a toast;
+    then **the user decided (18:40): no toast**. The steps and link go in the skill's own page: the `hint` in
+    `default_config.yaml` is now a numbered list with bold links that open in the user's browser. Bold is
+    `<strong><a class="anchor" target="_blank">`, ShipBit's Spotify-skill pattern; plain `<a href>` had opened inside
+    the Wingman frame. The links go straight to the YouTube Data API v3 library page and the Credentials page.
+    `_GET_KEY_STEPS` and the toast are removed; `_MISSING_KEY_REPLY` points to the skill page and Settings → Secrets.
+    Installed; 50 tests green. **Not yet seen in the app**: does the link open in the browser?
+  - Next: the user checks the skill page, enters a key, then the live test.
 - **One repo for the player and the YouTube skill**, as the user asked. Branch `feat/youtube-skill` (from `master` 8efb3eb),
   committed as f8910ec, **merged to `master` as a13f7b1 and pushed (2026-10-30)**. No tag yet, so nothing is released.
   - `skill/youtube_video_player/`: the skill, as installed in `custom_skills`. Moved from the scratch repo
@@ -15,11 +27,36 @@
   - player → `%LOCALAPPDATA%\Programs\Wingman Player\` (where the MSI installs and where the skill looks), built with the CI
     publish flags and `-p:Version=1.0.0`. Smoke test: `/player/state` answers, and no false update is offered.
   - Wingman had not been restarted, so the skill isn't loaded yet. It also has to be enabled on a wingman in the UI.
-- **Version bug found and fixed (uncommitted):** `src/wingman_player.csproj` hard-coded `AssemblyVersion 0.5.0.0`, and
+- **Ported to the v3 skill API (2026-10-30, uncommitted).** Wingman 3.2.12 had skipped the skill as `legacy`
+  (log `3_2_12\logs\wingman-core.2026-10-30_17-59-31.log` line 55). Guide: `wingman-ai\skills\MIGRATING-TO-V3.md`.
+  - Changes in `main.py`: `api_version: 3`; `printr`/`LogType` → `self.log`; `threaded_execution` →
+    `self.wingman.run_in_thread`; `retrieve_secret` → `self.wingman.secrets.retrieve`.
+  - API-key flow: v3 skills can't write or re-prompt secrets, so the `youtube_api_key_input` property and the reprompt
+    dialog are gone. Wingman prompts once per session; after that the skill points to Settings → Secrets, and a key
+    saved there is picked up by `secret_changed` without a restart.
+  - Also updated: skill README (key steps, "needs v3 skill API, tested on 3.2.12"), the v1.0.0 release notes, and
+    DEVLOG Session 19.
+  - Verified: 50 tests green; Core's `SkillCatalog._evaluate` gives `ok` on the installed copy; a stub build runs
+    validate and lists all 15 tools.
+  - Installed into custom_skills (it matches the repo). **Not yet seen loading in a running Wingman: needs a restart.**
+- **First live boot after the port (2026-10-30 18:10, log `wingman-core.2026-10-30_18-10-23.log`):**
+  `SkillCatalog: 27 eligible, 0 skipped`, so the v3 port loads. Enabling the skill on ORIN then failed:
+  `failed during prepare/activate and was removed: ... Missing secret 'youtube_api_key'`. In v3 Core
+  (`services/wingman_skill_manager.py` ~l.270) a validation error removes an auto-activated skill, so a key entered
+  afterwards never reached it. The user also asked for instructions in the secret dialog (the screenshot shows only
+  "Please enter your 'youtube_api_key' secret/API key").
+  - Fix (uncommitted): `validate()` still asks for the key but keeps the missing-secret error out of `errors`, so the
+    skill stays loaded and `secret_changed` wires the key in on submit. Tools answer `_MISSING_KEY_REPLY` until then.
+  - When the key is missing, `validate()` also posts `_GET_KEY_STEPS` (how to get a key from Google Cloud, plain
+    ASCII) once as a warning notice next to the dialog.
+  - Core can't put text into the dialog (`PromptSecretCommand` has only `requester` + `secret_name`). The request
+    for ShipBit is logged in `skill/docs/TODO.md`.
+  - Verified with a stub: 3 validations with no key give no errors and 1 notice. 50 tests green. Copied to custom_skills.
+- **Version bug found and fixed in 9d5ef9a:** `src/wingman_player.csproj` hard-coded `AssemblyVersion 0.5.0.0`, and
   `UpdateChecker` reads AssemblyVersion. `-p:Version` from CI did not override it, so every build thought it was 0.5.0.
   Installed v0.5.1 players therefore keep offering 0.5.1, and a v1.0.0 built that way would keep offering 1.0.0. Fix:
   only `<Version>1.0.0</Version>`, so AssemblyVersion/FileVersion follow it. Verified: the rebuilt 1.0.0 reports no update.
-  **Must be committed before tagging v1.0.0.**
+  Committed and pushed as 9d5ef9a (2026-10-30).
 - **One shared version, one release.** The player's `UpdateChecker.cs` and the skill's updater both read
   `api.github.com/repos/Diftic/Wingman-Player/releases/latest`. Every release must therefore carry the exe, the MSI
   and the skill zip + `.sha256`. Prefixed skill tags would make a skill-only release "latest" and break installed
@@ -55,6 +92,8 @@
 
 ## Open (owner: the user)
 
+- Commit and push the v3 port. Uncommitted: `skill/youtube_video_player/{main.py,default_config.yaml}`, `skill/README.md`,
+  `skill/docs/DEVLOG.md`, `skill/docs/TODO.md`, `release-notes/v1.0.0.md`. Commit before or after the live test.
 - Tag `v1.0.0` to publish the first combined release (best after one live test of the skill).
 - `master` also carries `instructions.json` (5c59882 "update test", 2026-09-20, pushed from GitHub before this merge). It looks unrelated to the player; keep or remove.
 - Whether to rename the repo later (GitHub redirects the API, but that hasn't been checked with the player's HttpClient).
@@ -65,7 +104,8 @@
 
 ## Next step
 
-Commit the csproj version fix. Restart Wingman, enable the YouTube skill, and test it live (play, search, update check). Then tag `v1.0.0`
+Restart Wingman (the 18:10 session removed the skill). The key notice should appear next to the secret prompt;
+enter a key; check the log says the skill was prepared, not removed; and test it live (play, search, update check). Then tag `v1.0.0`
 (the user's call), watch the Actions run, and check the release has the exe, MSI, zip and sha256.
 
 ## Evidence

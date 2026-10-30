@@ -1,4 +1,5 @@
 module: skills.youtube_video_player.main
+api_version: 3
 name: YoutubeVideoPlayer
 display_name: YouTube Video Player
 author: Mallachi
@@ -71,9 +72,10 @@ prompt: |
     current time, then call `seek_player(current + 30)`.
   - `get_player_status`: Read what's playing, position, duration. Use for
     "what's playing", "how long is this", "where am I in the song".
-  - `set_youtube_api_key`: Re-open the YouTube API key prompt. Use when the
-    user says "set my YouTube key", "the key is missing", or when searches
-    are failing with a "key not configured" error.
+  - `set_youtube_api_key`: Pick up the YouTube API key, or tell the user
+    where to enter it (Wingman Settings → Secrets, entry `youtube_api_key`).
+    Use when the user says "set my YouTube key", "the key is missing", or
+    when searches are failing with a "key not configured" error.
   - `download_player_installer`: Open the Wingman Player MSI download in
     the user's default browser. Use when the user says "download the
     Wingman Player installer", "install the player", "install Wingman
@@ -146,19 +148,6 @@ examples:
   - en: "Stop the music"
 
 custom_properties:
-  - id: youtube_api_key_input
-    name: Paste YouTube API Key
-    hint: >
-      Paste your YouTube Data API v3 key here, then click Save. The skill
-      moves the key into Wingman's secure secret storage and (best-effort)
-      clears this field. Use this if you dismissed the secret prompt or
-      want to update / rotate an existing key.
-      Get a free key at console.cloud.google.com — enable YouTube Data
-      API v3, create credentials → API key, restrict to that API.
-    value: ""
-    property_type: string
-    required: false
-
   - id: daily_search_limit
     name: Daily Search Limit
     hint: >
@@ -239,12 +228,22 @@ hint:
     <p>Voice-driven YouTube playback. Searches via the YouTube Data API and
     drives the Wingman Player overlay. Auto-plays when confident, lists top 5
     when not.</p>
-    <p><strong>Setup:</strong> get a free YouTube Data API v3 key from
-    <a href="https://console.cloud.google.com">console.cloud.google.com</a>
-    (enable YouTube Data API v3, create credentials → API key, restrict to
-    that API). The skill prompts for the key on first use.</p>
+    <p><strong>Setup: get a free YouTube API key</strong> (no billing needed,
+    about 100 searches a day):</p>
+    <ol class="list-decimal">
+    <li>Open the <strong><a class="anchor" target="_blank"
+    href="https://console.cloud.google.com/apis/library/youtube.googleapis.com">YouTube
+    Data API v3 page</a></strong> and sign in with a Google account. Create a
+    project if it asks (any name).</li>
+    <li>Click <strong>Enable</strong>.</li>
+    <li>Open <strong><a class="anchor" target="_blank"
+    href="https://console.cloud.google.com/apis/credentials">Credentials</a></strong>,
+    click <strong>Create credentials → API key</strong> and copy the key.</li>
+    <li>Optional: edit the key and restrict it to YouTube Data API v3.</li>
+    <li>Paste it when Wingman asks for <code>youtube_api_key</code>. To enter or
+    change it later, use Settings → Secrets.</li>
+    </ol>
     <p><strong>Player install:</strong> Wingman Player ships separately at
-    <a href="https://github.com/Diftic/Wingman-Player/releases/latest">
-    github.com/Diftic/Wingman-Player</a>. Run
+    <strong><a class="anchor" target="_blank" href="https://github.com/Diftic/Wingman-Player/releases/latest">github.com/Diftic/Wingman-Player</a></strong>. Run
     <code>Wingman-Player-Setup.msi</code>; the skill auto-resolves the install
     path. Override only if you keep a custom build elsewhere.</p>

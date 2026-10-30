@@ -2,6 +2,8 @@
 
 Voice-driven YouTube video playback for Wingman AI. The skill drives [Wingman Player](https://github.com/Diftic/Wingman-Player), a small overlay app installed separately. Once installed, the skill tells you when a new version is out and updates itself when you ask.
 
+Needs a Wingman AI with the v3 skill API (tested on 3.2.12). Older versions of this skill (0.1.0 from Discord) are skipped there as "legacy".
+
 ## What it does
 
 | You say... | What happens |
@@ -15,7 +17,7 @@ Voice-driven YouTube video playback for Wingman AI. The skill drives [Wingman Pl
 | "Skip ahead 30 seconds" / "Go to 1:30" | Seek (relative or absolute) |
 | "Hide the player" / "Show the player" | Tucks the overlay away or brings it back |
 | "What's playing?" | Returns current title, state, position, duration |
-| "Set the YouTube API key" | Re-opens the API key prompt if you dismissed it |
+| "Set the YouTube API key" | Picks up the key, or tells you where to enter it |
 | "Download the Wingman Player installer" | Opens the player installer in your browser |
 | "Is there an update for the YouTube skill?" | Checks GitHub for a newer version |
 | "Update the YouTube skill" | Downloads, verifies and installs it; restart Wingman to load it |
@@ -55,11 +57,9 @@ If Wingman Player isn't installed yet, the skill shows a yellow notice. Say *"do
 
 ### 3. First launch
 
-When Wingman activates the skill it'll prompt for the YouTube API key. Paste it once — SecretKeeper handles it from there.
+When Wingman activates the skill it'll prompt for the YouTube API key. Paste it once and Wingman stores it.
 
-If you accidentally dismiss the prompt, either:
-- Open Wingman Settings → Secrets and enter the key (skill picks it up automatically), or
-- Say *"Set the YouTube API key"* and the prompt re-opens.
+If you dismiss the prompt, open Wingman Settings → Secrets and enter the key as `youtube_api_key`. The skill picks it up without a restart. (Wingman shows the prompt once per session, and skills can't reopen it.)
 
 You're ready: say **"play Never Gonna Give You Up by Rick Astley"** and the player launches and starts playing.
 
@@ -158,7 +158,7 @@ Almost always one of:
 Local cap (`daily_search_limit`) hit. Resets at midnight UTC. Raise it in the skill config if you want more headroom.
 
 **"YouTube API key isn't configured"**
-The prompt was dismissed, or the key was deleted from Wingman's secrets. Recovery: open Wingman Settings → Secrets and enter the key, or say *"Set the YouTube API key"* to re-open the dialog.
+The prompt was dismissed, or the key was deleted from Wingman's secrets. Recovery: open Wingman Settings → Secrets and enter the key as `youtube_api_key`; no restart needed.
 
 **"The update failed and nothing was changed"**
 GitHub couldn't be reached, or the download didn't match its checksum. Try again later, or install the release zip by hand.

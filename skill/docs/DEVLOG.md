@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-10-30 — Session 19 — GitHub distribution, self-update, one repo with the player, v3 skill API
+
+- The skill moved into the player's repo (`Diftic/Wingman-Player`, folder `skill/`). One shared version and one release
+  carrying exe, MSI, skill zip and `.sha256`. Discord zips are retired.
+- Self-update (`youtube_skill_updater.py`): it notices a new release at start and installs it only when the user asks.
+  The checksum is verified, file names are allowlisted, and a failed install rolls back.
+- **v3 skill API port.** Wingman 3.2.12 skipped the skill as `legacy` (log: `SkillCatalog: ... [('youtube_video_player', 'legacy')]`).
+  Changes:
+  - `api_version: 3`
+  - `printr`/`LogType` → `self.log`
+  - `threaded_execution` → `self.wingman.run_in_thread`
+  - `retrieve_secret` → `self.wingman.secrets.retrieve`
+  - The API-key flow lost its writes to `secret_keeper`. v3 skills can't store or re-prompt secrets, so the
+    `youtube_api_key_input` property and the reprompt dialog are gone. A missing key gets Wingman's own prompt once per
+    session; after that the skill points to Settings → Secrets, and `secret_changed` still wires a saved key in
+    without a restart.
+  - Verified with Core's `SkillCatalog._evaluate` (verdict ok) and a stub build (validate + 15 tools).
+
 ## 2026-05-14 - Session 18 - Install discovery UX + minimize / show / idle auto-hide + companion player v0.5.1 release
 
 ### What landed today

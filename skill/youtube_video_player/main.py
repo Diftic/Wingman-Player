@@ -8,11 +8,12 @@ YouTube IFrame). Tools exposed:
   play_search_result        — pick from the most recent top-5 list
   resume_player / pause / stop / next_track / previous_track / seek_player
   get_player_status
-  set_youtube_api_key       — recovery path if the secret prompt was dismissed
+  set_youtube_api_key       — pick up the key, or say where to enter it
   check_for_skill_update / install_skill_update — updates from this skill's
                               GitHub releases, installed only on the user's yes
 
-Searches go to the YouTube Data API v3 (user-provided key via SecretKeeper).
+Searches go to the YouTube Data API v3 (user-provided key, Wingman secret
+`youtube_api_key`). Written for the v3 skill API (api_version: 3).
 Player commands go to http://127.0.0.1:17330/player/* (configurable).
 
 Wingman Player ships independently at
@@ -39,7 +40,6 @@ from typing import TYPE_CHECKING, Any
 import aiohttp
 import yarl
 
-from api.enums import LogType
 from api.interface import (
     SettingsConfig,
     SkillConfig,
@@ -58,7 +58,7 @@ from youtube_search import YouTubeSearch  # noqa: E402
 import youtube_skill_updater as updater  # noqa: E402
 
 if TYPE_CHECKING:
-    from wingmen.open_ai_wingman import OpenAiWingman
+    from wingmen.wingman_context import WingmanContext
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,15 @@ def _format_timestamp(seconds: float) -> str:
         return f"{h}:{m:02d}:{sec:02d}"
     return f"{m}:{sec:02d}"
 
+
+# v3 skills can't reopen the secret prompt, so point the user at Settings.
+# The full steps with links are in the skill's hint (default_config.yaml).
+_MISSING_KEY_REPLY = (
+    "I need a YouTube Data API key first. The steps and links are on this "
+    "skill's page in Wingman's Skills settings. Then open Settings, then "
+    "Secrets, enter it as youtube_api_key and save, and say your request "
+    "again; no restart needed."
+)
 
 _REDIRECTS = (301, 302, 303, 307, 308)
 _MAX_REDIRECTS = 5
@@ -121,7 +130,7 @@ class YoutubeVideoPlayer(Skill):
         self,
         config: SkillConfig,
         settings: SettingsConfig,
-        wingman: "OpenAiWingman",
+        wingman: "WingmanContext",
     ) -> None:
         super().__init__(config=config, settings=settings, wingman=wingman)
         self._search: YouTubeSearch | None = None
@@ -130,7 +139,7 @@ class YoutubeVideoPlayer(Skill):
         self._last_results: list[dict[str, Any]] = []
         self._last_played_index: int = -1
         self._api_key: str | None = None
-        # Cached config so the secret-recovery paths (secret_changed, the
+        # Cached config so the key pick-up paths (secret_changed, the
         # set_youtube_api_key tool) can re-init YouTubeSearch with the same
         # settings prepare() loaded — without repeating that lookup work.
         self._cache_dir: Path | None = None
@@ -160,16 +169,12 @@ class YoutubeVideoPlayer(Skill):
         self.retrieve_custom_property_value("auto_launch_player", errors)
         self.retrieve_custom_property_value("check_for_updates", errors)
 
-        # Secret — SecretKeeper prompts the user on first run if missing.
-        self._api_key = await self.retrieve_secret(
-            "youtube_api_key",
-            errors,
-            hint=(
-                "Get a free key at console.cloud.google.com — enable "
-                "YouTube Data API v3, then Credentials → Create → API key. "
-                "Restrict it to YouTube Data API v3."
-            ),
-        )
+        # Secret — Wingman prompts the user once per session if it's missing.
+        # The missing-secret error is left out of `errors` on purpose: v3 Core
+        # removes an auto-activated skill that fails validation, and then the
+        # key the user submits would never reach it (secret_changed is only
+        # subscribed in prepare()). Tools answer _MISSING_KEY_REPLY until then.
+        self._api_key = await self.wingman.secrets.retrieve("youtube_api_key", [])
 
         return errors
 
@@ -222,7 +227,7 @@ class YoutubeVideoPlayer(Skill):
                 "browser."
             )
             logger.warning(msg)
-            self.printr.print(msg, color=LogType.WARNING)
+            self.log.warning(msg)
         elif not resolved_exe:
             local_appdata = os.environ.get("LOCALAPPDATA", "")
             if local_appdata:
@@ -246,7 +251,7 @@ class YoutubeVideoPlayer(Skill):
                         "config) so I can pick up the new install."
                     )
                     logger.warning(msg)
-                    self.printr.print(msg, color=LogType.WARNING)
+                    self.log.warning(msg)
 
         self._player = PlayerClient(
             host=str(player_host),
@@ -272,13 +277,13 @@ class YoutubeVideoPlayer(Skill):
         # which leaves playback held in a "loaded but not playing" state.
         # Fire-and-forget; we don't block prepare() on the launch.
         if bool(auto_launch_player):
-            self.threaded_execution(self._warm_launch_player)
+            self.wingman.run_in_thread(self._warm_launch_player)
 
         # Reads the latest release info only (one small GET to GitHub). New
         # code is downloaded and installed only when the user asks for it.
         check_for_updates = self.retrieve_custom_property_value("check_for_updates", [])
         if check_for_updates is None or bool(check_for_updates):
-            self.threaded_execution(self._check_for_update_at_start)
+            self.wingman.run_in_thread(self._check_for_update_at_start)
 
     async def _check_for_update_at_start(self) -> None:
         """Background task: show a badge when GitHub has a newer release."""
@@ -289,11 +294,10 @@ class YoutubeVideoPlayer(Skill):
             return
         self._pending_update = release
         if release is not None:
-            self.printr.print(
+            self.log.info(
                 f"YouTube Video Player {release.version} is available (you have "
                 f"{self.VERSION}). To install it, ask your Wingman to update the "
-                f"YouTube skill, or see {updater.RELEASES_PAGE_URL}",
-                color=LogType.INFO,
+                f"YouTube skill, or see {updater.RELEASES_PAGE_URL}"
             )
 
     async def _warm_launch_player(self) -> None:
@@ -334,17 +338,15 @@ class YoutubeVideoPlayer(Skill):
             self._search.update_api_key(api_key)
 
     # ------------------------------------------------------------------
-    # Recovery: pick up a key entered via Wingman Settings → Secrets
+    # API key: pick up a key entered via Wingman Settings → Secrets
     # ------------------------------------------------------------------
     #
-    # If the user dismisses the secret prompt on first activation, validate()
-    # records a MISSING_SECRET error but the skill still loads (MISSING_SECRET
-    # is non-fatal in services/tower.py). prepare() runs, which subscribes
-    # this callback to the SecretKeeper's "secrets_saved" pub-sub. When the
-    # user later enters the key through Wingman's Settings → Secrets UI,
-    # SecretKeeper saves and publishes "secrets_saved", which fires this
-    # callback — we update the in-memory key and the YouTubeSearch instance,
-    # no Wingman restart required.
+    # v3 skills can read secrets but not write them, and Wingman shows the
+    # secret prompt once per session. If the user dismisses it, validate()
+    # records a MISSING_SECRET error but the skill still loads (non-fatal).
+    # The base class subscribes secret_changed to "secrets_saved" in
+    # prepare(), so a key entered later in Settings → Secrets is wired in
+    # without a Wingman restart.
 
     async def secret_changed(self, secrets: dict[str, Any]) -> None:
         new_key = (secrets.get("youtube_api_key") or "").strip()
@@ -357,48 +359,15 @@ class YoutubeVideoPlayer(Skill):
         logger.info("YouTube API key updated via secrets_saved event")
 
     async def update_config(self, new_config) -> None:
-        """Hook fired when the user changes any custom_property in Wingman's
-        skill settings UI. Two responsibilities:
+        """Re-activate if `super().update_config()` invalidated the skill.
 
-          (a) If `youtube_api_key_input` was set, move the key into SecretKeeper
-              (in-UI alternative to the secret-prompt dialog).
-          (b) ALWAYS re-activate if `super().update_config()` invalidated the
-              skill. Wingman's default doesn't auto-revalidate auto_activate
-              skills after config change — the LLM keeps thinking the skill
-              is "in a config-changed state" and refuses to call its tools.
-              Without this any config Save (even with no actual change) leaves
-              the skill silently broken until Wingman restart.
+        Wingman's default doesn't auto-revalidate auto_activate skills after a
+        config change: the LLM keeps thinking the skill is "in a config-changed
+        state" and refuses to call its tools. Without this any config Save
+        (even with no actual change) leaves the skill broken until a restart.
         """
         await super().update_config(new_config)
-
-        # (a) Pick up a key pasted into the input field.
-        new_input = ""
-        for prop in (new_config.custom_properties or []):
-            if prop.id == "youtube_api_key_input":
-                new_input = (prop.value or "").strip()
-                break
-
-        if new_input:
-            self.secret_keeper.secrets["youtube_api_key"] = new_input
-            saved = await self.secret_keeper.save()
-            if saved:
-                # Best-effort clear so the key isn't sitting in plaintext on
-                # screen. Persistence to disk depends on Wingman's write-back
-                # behaviour after update_config returns.
-                for prop in new_config.custom_properties or []:
-                    if prop.id == "youtube_api_key_input":
-                        prop.value = ""
-                        break
-                logger.info("YouTube API key saved via UI input field")
-            else:
-                logger.error(
-                    "Could not save YouTube API key from input field — "
-                    "SecretKeeper.save() returned False"
-                )
-
-        # (b) Re-activate unconditionally if the super-class left us in an
-        # invalidated state. Idempotent when already valid+prepared
-        # (ensure_activated has an early-return for that case).
+        # Idempotent when already valid+prepared (ensure_activated returns early).
         if not self.is_validated or not self.is_prepared:
             success, message = await self.ensure_activated()
             if success:
@@ -406,52 +375,18 @@ class YoutubeVideoPlayer(Skill):
             else:
                 logger.warning("Re-activation after config update failed: %s", message)
 
-    async def _reprompt_api_key_dialog(self) -> bool:
-        """Re-broadcast the SecretKeeper dialog for `youtube_api_key`. Clears
-        the per-session prompted-secret guard and any cached empty value so
-        `retrieve_secret` actually emits a fresh PromptSecretCommand instead
-        of treating the key as 'already asked, returning cached empty'.
-
-        Returns True if a non-empty key was returned synchronously (rare race
-        where SecretKeeper already had a saved value we hadn't picked up).
-        Returns False in the normal case — the user will enter the key into
-        the dialog asynchronously and secret_changed() will wire it in.
-        """
-        try:
-            self.secret_keeper.prompted_secrets.remove("youtube_api_key")
-        except ValueError:
-            pass
-        self.secret_keeper.secrets.pop("youtube_api_key", None)
-
-        new_key = await self.retrieve_secret(
-            "youtube_api_key",
-            [],
-            hint=(
-                "Get a free key at console.cloud.google.com — enable "
-                "YouTube Data API v3, create credentials → API key. "
-                "Restrict it to YouTube Data API v3."
-            ),
-        )
-
-        if new_key:
-            self._api_key = new_key
-            self._init_search(new_key)
-            return True
-        return False
-
-    async def _ensure_api_key_or_prompt(self) -> bool:
-        """Returns True if the YouTube API key is configured. If it isn't,
-        re-broadcasts the SecretKeeper prompt so the user gets the dialog
-        again — and returns False.
-
-        This is the *automatic* recovery path: the user dismisses the prompt,
-        then says 'play X' a moment later, the prompt re-opens on its own.
-        No magic phrase or Settings-UI hunt required. The actual key arrival
-        is async — secret_changed wires it through when the user saves.
-        """
+    async def _has_api_key(self) -> bool:
+        """True when a YouTube API key is available. Otherwise asks Wingman for
+        it once more: that picks up a key saved since prepare() and shows the
+        secret prompt if it hasn't been shown this session."""
         if self._search is not None and self._search.has_api_key():
             return True
-        return await self._reprompt_api_key_dialog()
+        new_key = (await self.wingman.secrets.retrieve("youtube_api_key", []) or "").strip()
+        if not new_key:
+            return False
+        self._api_key = new_key
+        self._init_search(new_key)
+        return self._search is not None
 
     # ------------------------------------------------------------------
     # Tools — search & playback initiation
@@ -480,17 +415,8 @@ class YoutubeVideoPlayer(Skill):
         if not query.strip():
             return "I need something to search for."
 
-        # Auto-recover: if the API key is missing (e.g. user dismissed the
-        # initial prompt), re-broadcast the dialog instead of failing with
-        # an obscure error. The user just sees the prompt re-appear, enters
-        # the key, and their original "play X" request works on the next
-        # try (secret_changed wires the key in).
-        if not await self._ensure_api_key_or_prompt():
-            return (
-                "I need a YouTube Data API key first. I've reopened the key "
-                "prompt — paste your key in the dialog, then say your request "
-                "again."
-            )
+        if not await self._has_api_key():
+            return _MISSING_KEY_REPLY
 
         # Try to bring the player up before we burn a search call.
         if not await self._player.ensure_running():
@@ -770,26 +696,21 @@ class YoutubeVideoPlayer(Skill):
         return json.dumps(payload, ensure_ascii=False)
 
     # ------------------------------------------------------------------
-    # Tools — secrets recovery
+    # Tools — API key
     # ------------------------------------------------------------------
 
     @tool(
         description=(
-            "Re-prompt the user for the YouTube API key. Use when the user says "
-            "'set the YouTube API key', 'enter my YouTube key', 'my YouTube key "
-            "is missing', or any time YouTube searches are failing because the "
-            "key was dismissed or never entered. This reopens the secret-prompt "
-            "dialog in Wingman."
+            "Pick up the YouTube API key, or tell the user where to enter it. "
+            "Use when the user says 'set the YouTube API key', 'enter my "
+            "YouTube key', 'my YouTube key is missing', or any time YouTube "
+            "searches are failing because the key was dismissed or never entered."
         )
     )
     async def set_youtube_api_key(self) -> str:
-        if await self._reprompt_api_key_dialog():
-            return "YouTube API key set. Try a search now."
-        return (
-            "I've reopened the YouTube API key prompt. Please paste your key "
-            "in the dialog. Once you save it, searches will work without a "
-            "Wingman restart."
-        )
+        if await self._has_api_key():
+            return "The YouTube API key is set. Try a search now."
+        return _MISSING_KEY_REPLY
 
     # ------------------------------------------------------------------
     # Tools — player install (user-consented browser launch)

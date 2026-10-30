@@ -2,6 +2,18 @@
 
 ---
 
+## Open (2026-10-30)
+
+- [ ] **Core request for ShipBit: help text in the secret prompt.** Wingman's "needs to know a secret" dialog shows
+  only the secret's name (`api/commands.py` `PromptSecretCommand` has just `requester` + `secret_name`; the client
+  draws the dialog). Users don't know where a YouTube key comes from. Proposal: an optional `hint` (plain text plus
+  link) on `PromptSecretCommand`, passed through `SecretKeeper.retrieve(..., hint=)` and
+  `self.wingman.secrets.retrieve(name, errors, hint=)`, and shown under the input. Until then the steps and links
+  live in the skill's `hint` (its page in Skills settings), and tools point there when the key is missing.
+- [ ] Live test on Wingman 3.2.12 after a key is entered: play, search, pause/stop, update check.
+
+---
+
 ## v0.1.0 scaffold (2026-05-02)
 
 ### Done
