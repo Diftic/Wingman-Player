@@ -2,8 +2,8 @@
 
 ## Current state (2026-10-30)
 
-- **One repo for the player and the YouTube skill**, as the user asked. Branch `feat/youtube-skill` (from `master` 8efb3eb).
-  **Nothing committed, nothing pushed.**
+- **One repo for the player and the YouTube skill**, as the user asked. Branch `feat/youtube-skill` (from `master` 8efb3eb),
+  **committed as f8910ec (2026-10-30), not pushed, not merged.**
   - `skill/youtube_video_player/`: the skill, as installed in `custom_skills`. Moved from the scratch repo
     `D:\PycharmProjects\Wingman-YouTube-Skill`, created this session. Its leftovers (empty `.git`, the replaced
     `release.yml` and handover) still need deleting by the user, since the safety hook blocked `rm -rf`. The older copy in
@@ -45,7 +45,7 @@
 
 ## Open (owner: the user)
 
-- Review the branch, then commit, merge to `master` and push. Then tag `v1.0.0` to publish the first combined release.
+- Merge `feat/youtube-skill` (f8910ec) to `master` and push. Then tag `v1.0.0` to publish the first combined release.
 - Whether to rename the repo later (GitHub redirects the API, but that hasn't been checked with the player's HttpClient).
 - No LICENSE file.
 - Users on the old 0.1.0 Discord zip must install 1.0.0 once by hand (0.1.0 has no updater).
@@ -54,7 +54,7 @@
 
 ## Next step
 
-The user's go-ahead to commit on `feat/youtube-skill`. After merge and push: tag `v1.0.0`, watch the Actions run,
+Merge f8910ec to `master` and push (the user’s call). Then: tag `v1.0.0`, watch the Actions run,
 install the skill from the release into `custom_skills` and test it live.
 
 ## Evidence
