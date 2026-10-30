@@ -2,8 +2,16 @@
 
 ## Current state (2026-10-30)
 
-- **Summary (latest, 18:35):** master 9d5ef9a is pushed, but the v3 skill-API port and the missing-key fix are
-  **uncommitted**. Both are installed in `custom_skills`.
+- **Summary (latest, 18:40): v1.0.0 is RELEASED** (https://github.com/Diftic/Wingman-Player/releases/tag/v1.0.0).
+  - The user tested live ("works flawlessly") and asked to update git and make the installer.
+  - The v3 port is commit 46ca105, tagged `v1.0.0`. Build & Release run 41099838020 succeeded in 2m45s.
+  - Assets: `Wingman-Player-Setup.msi` (63.6 MB), `Wingman-Player.exe`, `youtube_video_player-v1.0.0.zip` (65 KB) and its
+    `.sha256`. `releases/latest` now reports v1.0.0.
+  - The downloaded zip passes the skill's own `unpack` (checksum, names, version stamps; 9 files, api_version 3).
+  - Installed v0.5.1 players will now offer 1.0.0. Earlier skill 0.1.0 users must install 1.0.0 by hand once.
+  - CI annotation only: actions on Node 20 are deprecated (checkout@v4, setup-dotnet@v4, setup-python@v5,
+    action-gh-release@v2); bump them some day.
+- Earlier the same evening: master 9d5ef9a was pushed; the v3 port and missing-key fix were then installed in `custom_skills`.
   - Boot at 18:22 (log `wingman-core.2026-10-30_18-22-16.log`): the skill is eligible, and with no key it was
     `validated and prepared` (l.81) instead of removed, so the missing-key fix works.
   - The how-to-get-a-key text was posted (l.79) as a log line, invisible behind the secret dialog. Briefly a toast;
@@ -92,8 +100,8 @@
 
 ## Open (owner: the user)
 
-- Commit and push the v3 port. Uncommitted: `skill/youtube_video_player/{main.py,default_config.yaml}`, `skill/README.md`,
-  `skill/docs/DEVLOG.md`, `skill/docs/TODO.md`, `release-notes/v1.0.0.md`. Commit before or after the live test.
+- Post the release link in Discord (the user's call).
+- ShipBit request: help text in the secret dialog (`skill/docs/TODO.md`).
 - Tag `v1.0.0` to publish the first combined release (best after one live test of the skill).
 - `master` also carries `instructions.json` (5c59882 "update test", 2026-09-20, pushed from GitHub before this merge). It looks unrelated to the player; keep or remove.
 - Whether to rename the repo later (GitHub redirects the API, but that hasn't been checked with the player's HttpClient).
@@ -104,9 +112,8 @@
 
 ## Next step
 
-Restart Wingman (the 18:10 session removed the skill). The key notice should appear next to the secret prompt;
-enter a key; check the log says the skill was prepared, not removed; and test it live (play, search, update check). Then tag `v1.0.0`
-(the user's call), watch the Actions run, and check the release has the exe, MSI, zip and sha256.
+Nothing pending in the code. The user posts the release link in Discord. Next work, when wanted: a LICENSE file,
+bump the Node-20 actions, the ShipBit secret-dialog request, and deleting the stale wingman-skills copy.
 
 ## Evidence
 
